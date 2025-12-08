@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}AI助学 - LovePython{% endblock %}
+
+{% block content %}
+<div class="hero-section mb-4">
+    <div class="card">
+        <div class="hero-content d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <h1 class="display-title mb-2"><i class="fas fa-robot"></i> AI助学</h1>
+                <p class="lead mb-0">在这里提问、讲解或练习，AI 会给你即时反馈。</p>
+            </div>
+            <a href="{{ url_for('study') }}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-arrow-left"></i> 返回学习主页
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="chat-container">
+        <div class="chat-window" id="chatWindow">
+            <div class="chat-message assistant">
+                <div class="avatar"><i class="fas fa-robot"></i></div>
+                <div class="bubble">
+                    你好，我是 AI 助学助手。可以向我提问 Python 知识、算法思路或练习辅导。
+                </div>
+            </div>
+            <!-- 这里后续可动态追加聊天记录 -->
+        </div>
+        <div class="chat-input">
+            <textarea id="chatInput" rows="2" placeholder="请输入你的问题或要讲解的知识点..."></textarea>
+            <div class="chat-actions">
+                <button class="btn btn-primary" type="button" disabled>
+                    <i class="fas fa-paper-plane"></i> 发送
+                </button>
+                <small class="text-muted">当前为界面占位，尚未接入模型。</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .chat-window {
+        max-height: 500px;
+        min-height: 260px;
+        overflow-y: auto;
+        padding: 1rem;
+        background: var(--gray-100);
+        border-radius: var(--border-radius);
+        border: 1px solid var(--gray-200);
+    }
+    .chat-message {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        align-items: flex-start;
+    }
+    .chat-message .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+    .chat-message.assistant .avatar {
+        background: var(--primary-color);
+    }
+    .chat-message.user .avatar {
+        background: var(--success-color);
+    }
+    .chat-message .bubble {
+        background: #fff;
+        border: 1px solid var(--gray-200);
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
+        max-width: 720px;
+        line-height: 1.6;
+        box-shadow: var(--box-shadow);
+    }
+    .chat-message.assistant .bubble {
+        background: #fff;
+    }
+    .chat-message.user {
+        flex-direction: row-reverse;
+    }
+    .chat-message.user .bubble {
+        background: #e8f4ff;
+        border-color: #cfe2ff;
+    }
+    .chat-input {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .chat-input textarea {
+        width: 100%;
+        border-radius: var(--border-radius);
+        border: 1px solid var(--gray-300);
+        padding: 0.75rem 0.9rem;
+        resize: vertical;
+        min-height: 80px;
+        font-size: 1rem;
+    }
+    .chat-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .chat-actions small {
+        color: var(--gray-600);
+    }
+    @media (max-width: 768px) {
+        .chat-window {
+            max-height: 360px;
+        }
+    }
+</style>
+{% endblock %}
+

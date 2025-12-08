@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}LovePython - 我要学习{% endblock %}
+
+{% block content %}
+<div class="hero-section mb-4">
+    <div class="card">
+        <div class="hero-content text-center py-4">
+            <div class="app-logo mb-3">
+                <i class="fas fa-graduation-cap" style="font-size: 3rem; color: var(--primary-color);"></i>
+            </div>
+            <h1 class="display-title mb-2">我要学习</h1>
+            <p class="lead mb-3">选择适合的学习方式，直接进入内容</p>
+            <div class="feature-buttons d-flex justify-content-center flex-wrap mt-3">
+                <a href="{{ url_for('study_video') }}" class="btn btn-primary main-action-btn">
+                    <i class="fas fa-play-circle"></i> 视频学习
+                </a>
+                <a href="{{ url_for('study_docs') }}" class="btn btn-success main-action-btn">
+                    <i class="fas fa-file-alt"></i> 文档学习
+                </a>
+                <a href="{{ url_for('study_ai') }}" class="btn btn-info main-action-btn">
+                    <i class="fas fa-robot"></i> AI助学
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="features-section mb-4">
+    <div class="card-grid">
+        <div class="card feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-play-circle"></i>
+            </div>
+            <h3 class="card-title">视频学习</h3>
+            <p class="card-text">内置本地视频，直接在线播放，适合快速入门与示范演练。</p>
+            <div class="mt-auto">
+                <a href="{{ url_for('study_video') }}" class="btn btn-sm btn-outline-primary">进入视频学习</a>
+            </div>
+        </div>
+        <div class="card feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <h3 class="card-title">文档学习</h3>
+            <p class="card-text">内置本地 Markdown 文档，阅读讲义/笔记，便于检索和复习。</p>
+            <div class="mt-auto">
+                <a href="{{ url_for('study_docs') }}" class="btn btn-sm btn-outline-primary">进入文档学习</a>
+            </div>
+        </div>
+        <div class="card feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-robot"></i>
+            </div>
+            <h3 class="card-title">AI助学</h3>
+            <p class="card-text">进入 AI 对话界面，提问、讲解与练习辅导。</p>
+            <div class="mt-auto">
+                <a href="{{ url_for('study_ai') }}" class="btn btn-sm btn-outline-primary">进入 AI 助学</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

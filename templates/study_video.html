@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}视频学习 - LovePython{% endblock %}
+
+{% block content %}
+<div class="hero-section mb-4">
+    <div class="card">
+        <div class="hero-content">
+            <h1 class="display-title mb-2"><i class="fas fa-play-circle"></i> 视频学习</h1>
+            <p class="lead mb-3">内置本地视频，直接在线播放</p>
+            <a href="{{ url_for('study') }}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-arrow-left"></i> 返回学习主页
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2 class="card-title mb-3">视频列表</h2>
+    {% if videos %}
+        <div class="card-grid">
+            {% for video in videos %}
+            <div class="card feature-card" style="min-height: auto;">
+                <h3 class="card-title" style="font-size: 1.1rem;">{{ video }}</h3>
+                <video style="width: 100%; border-radius: 8px; margin-top: 0.5rem;" controls preload="metadata">
+                    <source src="{{ url_for('static', filename='videos/' ~ video) }}">
+                    您的浏览器不支持视频播放。
+                </video>
+                <div class="mt-2 text-muted" style="font-size: 0.9rem;">
+                    本地文件：{{ video }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-muted">暂无视频文件，请将 mp4/webm/mov 等视频放入 <code>static/videos</code> 目录。</p>
+    {% endif %}
+</div>
+{% endblock %}
+

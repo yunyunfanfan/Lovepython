@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}文档学习 - LovePython{% endblock %}
+
+{% block content %}
+<div class="hero-section mb-4">
+    <div class="card">
+        <div class="hero-content">
+            <h1 class="display-title mb-2"><i class="fas fa-file-alt"></i> 文档学习</h1>
+            <p class="lead mb-3">内置本地 Markdown 文档，在线阅读</p>
+            <a href="{{ url_for('study') }}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-arrow-left"></i> 返回学习主页
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2 class="card-title mb-3">文档列表</h2>
+    {% if docs %}
+        <div class="card-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+            {% for doc in docs %}
+            <div class="card feature-card" style="min-height: auto;">
+                <h3 class="card-title" style="font-size: 1.05rem;">{{ doc }}</h3>
+                <div class="mt-auto">
+                    <a href="{{ url_for('study_docs', doc=doc) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-book-open"></i> 打开
+                    </a>
+                    <a href="{{ url_for('static', filename='docs/' ~ doc) }}" class="btn btn-sm btn-outline-secondary" download>
+                        <i class="fas fa-download"></i> 下载
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-muted mb-0">暂无文档，请将 Markdown 文件放入 <code>static/docs</code> 目录。</p>
+    {% endif %}
+</div>
+
+{% if selected_doc %}
+<div class="card">
+    <h2 class="card-title mb-3">{{ selected_doc }}</h2>
+    {% if doc_content %}
+        <div class="doc-viewer">
+            <pre>{{ doc_content }}</pre>
+        </div>
+    {% else %}
+        <p class="text-muted">无法读取该文档或内容为空。</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+    .doc-viewer pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: var(--gray-100);
+        padding: 1rem;
+        border-radius: var(--border-radius);
+        border: 1px solid var(--gray-200);
+    }
+</style>
+{% endblock %}
+
