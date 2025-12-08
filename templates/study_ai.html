@@ -29,12 +29,14 @@
             <!-- 这里后续可动态追加聊天记录 -->
         </div>
         <div class="chat-input">
-            <textarea id="chatInput" rows="2" placeholder="请输入你的问题或要讲解的知识点..."></textarea>
+            <textarea id="chatInput" rows="2" placeholder="请输入你的问题或要讲解的知识点..." onkeydown="handleKeyDown(event)"></textarea>
             <div class="chat-actions">
-                <button class="btn btn-primary" type="button" disabled>
+                <button class="btn btn-primary" type="button" id="sendBtn" onclick="sendMessage()">
                     <i class="fas fa-paper-plane"></i> 发送
                 </button>
-                <small class="text-muted">当前为界面占位，尚未接入模型。</small>
+                <span id="loadingIndicator" class="text-muted" style="display: none;">
+                    <i class="fas fa-spinner fa-spin"></i> AI 正在思考...
+                </span>
             </div>
         </div>
     </div>
@@ -125,6 +127,107 @@
             max-height: 360px;
         }
     }
+    .chat-message .bubble pre {
+        background: #f5f5f5;
+        padding: 0.5rem;
+        border-radius: 4px;
+        overflow-x: auto;
+        margin: 0.5rem 0;
+    }
+    .chat-message .bubble code {
+        background: #f5f5f5;
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+    }
 </style>
+
+<script>
+    function addMessage(content, isUser) {
+        const chatWindow = document.getElementById('chatWindow');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chat-message ${isUser ? 'user' : 'assistant'}`;
+        
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.innerHTML = isUser ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        // 简单的 Markdown 渲染（换行和代码块）
+        bubble.innerHTML = content.replace(/\n/g, '<br>')
+            .replace(/```([\s\S]*?)```/g, '<pre>$1</pre>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(bubble);
+        chatWindow.appendChild(messageDiv);
+        
+        // 滚动到底部
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+    
+    async function sendMessage() {
+        const input = document.getElementById('chatInput');
+        const message = input.value.trim();
+        
+        if (!message) {
+            return;
+        }
+        
+        // 添加用户消息
+        addMessage(message, true);
+        input.value = '';
+        
+        // 禁用发送按钮，显示加载指示器
+        const sendBtn = document.getElementById('sendBtn');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        sendBtn.disabled = true;
+        loadingIndicator.style.display = 'inline';
+        
+        try {
+            const response = await fetch('/api/ai/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: message })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                addMessage(data.response, false);
+            } else {
+                let errorMsg = '抱歉，发生了错误：' + (data.error || '未知错误');
+                if (data.detail) {
+                    errorMsg += '\n\n详细信息：' + data.detail;
+                }
+                addMessage(errorMsg, false);
+            }
+        } catch (error) {
+            addMessage('网络错误，请检查连接后重试。', false);
+            console.error('Error:', error);
+        } finally {
+            // 恢复发送按钮
+            sendBtn.disabled = false;
+            loadingIndicator.style.display = 'none';
+            input.focus();
+        }
+    }
+    
+    function handleKeyDown(event) {
+        // Ctrl+Enter 或 Enter 发送消息
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    }
+    
+    // 页面加载时聚焦输入框
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('chatInput').focus();
+    });
+</script>
 {% endblock %}
 

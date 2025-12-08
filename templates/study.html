@@ -60,5 +60,127 @@
         </div>
     </div>
 </div>
+
+<!-- 智能推荐区域 -->
+<div class="recommendations-section mb-4">
+    <div class="card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="card-title mb-0">
+                <i class="fas fa-lightbulb text-warning"></i> 智能推荐
+            </h2>
+            <span class="badge badge-info">
+                <i class="fas fa-robot"></i> AI 推荐
+            </span>
+        </div>
+        
+        {% if recommendations %}
+        <p class="text-muted mb-3">根据您的学习情况，系统为您推荐以下题目</p>
+        
+        <div class="recommendations-list">
+            {% for rec in recommendations %}
+            <div class="recommendation-item card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="badge badge-primary mr-2">题号: {{ rec.question.id }}</span>
+                                {% if rec.priority == 1 %}
+                                <span class="badge badge-danger">高优先级</span>
+                                {% elif rec.priority == 2 %}
+                                <span class="badge badge-warning">中优先级</span>
+                                {% else %}
+                                <span class="badge badge-secondary">低优先级</span>
+                                {% endif %}
+                                <span class="ml-2 text-muted">
+                                    <i class="fas fa-star text-warning"></i> 推荐度: {{ rec.score|round(1) }}
+                                </span>
+                            </div>
+                            <h5 class="mb-2">{{ rec.question.stem[:100] }}{% if rec.question.stem|length > 100 %}...{% endif %}</h5>
+                            <p class="text-muted mb-2">
+                                <i class="fas fa-info-circle"></i> {{ rec.reason }}
+                            </p>
+                            <div class="question-meta">
+                                {% if rec.question.difficulty %}
+                                <span class="badge badge-outline mr-2">
+                                    <i class="fas fa-signal"></i> {{ rec.question.difficulty }}
+                                </span>
+                                {% endif %}
+                                {% if rec.question.category %}
+                                <span class="badge badge-outline mr-2">
+                                    <i class="fas fa-tag"></i> {{ rec.question.category }}
+                                </span>
+                                {% endif %}
+                                {% if rec.question.qtype %}
+                                <span class="badge badge-outline">
+                                    <i class="fas fa-list"></i> {{ rec.question.qtype }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="ml-3">
+                            <a href="{{ url_for('show_question', qid=rec.question.id) }}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-play"></i> 开始答题
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="text-center mt-3">
+            <button onclick="refreshRecommendations()" class="btn btn-outline-primary">
+                <i class="fas fa-sync-alt"></i> 刷新推荐
+            </button>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> 
+            <strong>暂无推荐</strong>
+            <p class="mb-0 mt-2">系统会根据您的答题情况智能推荐题目。请先答一些题目，系统会分析您的学习情况并为您推荐合适的练习题目。</p>
+            <div class="mt-3">
+                <a href="{{ url_for('random_question') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-random"></i> 开始答题
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    /* 智能推荐样式 */
+    .recommendations-section {
+        margin-top: 2rem;
+    }
+    
+    .recommendation-item {
+        border-left: 4px solid var(--primary-color);
+        transition: var(--transition);
+    }
+    
+    .recommendation-item:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .badge-outline {
+        background-color: transparent;
+        border: 1px solid var(--gray-300);
+        color: var(--gray-700);
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .question-meta {
+        margin-top: 0.5rem;
+    }
+</style>
+
+<script>
+    function refreshRecommendations() {
+        // 刷新页面以获取新的推荐
+        window.location.reload();
+    }
+</script>
 {% endblock %}
 

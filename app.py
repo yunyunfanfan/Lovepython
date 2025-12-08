@@ -38,6 +38,17 @@ from flask import (
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# Import learning system module
+from learning_system import (
+    LearningSystem,
+    QuestionManager,
+    LearningProgressTracker,
+    StatisticsAnalyzer,
+    RecommendationEngine,
+    CacheManager,
+    AnalyzerFactory
+)
+
 # Initialize Flask application
 app = Flask(__name__)
 # Use environment variable for secret key with a fallback default
@@ -49,6 +60,9 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 # Static media directories for study resources
 VIDEO_DIR = os.path.join(app.static_folder, 'videos')
 DOC_DIR = os.path.join(app.static_folder, 'docs')
+
+# Initialize Learning System (Singleton pattern)
+learning_system = LearningSystem()
 
 #############################
 # Database Helper Functions #
@@ -427,9 +441,54 @@ def index():
     current_seq_qid = user_data['current_seq_qid'] if user_data and user_data['current_seq_qid'] else None
     conn.close()
     
+    # Get intelligent recommendations
+    recommendations = []
+    try:
+        recommendations_data = learning_system.get_recommendations(user_id, count=5)
+        # Convert to list of question objects for display
+        for rec in recommendations_data:
+            question = learning_system.question_manager.get_question(rec['question_id'])
+            if question:
+                recommendations.append({
+                    'question': question,
+                    'score': rec['score'],
+                    'reason': rec['reason'],
+                    'priority': rec['priority']
+                })
+        
+        # 如果没有推荐，提供一些随机题目作为默认推荐
+        if not recommendations:
+            all_questions = learning_system.question_manager._db_accessor.get_all_questions()
+            if all_questions:
+                # 获取用户已答题的ID
+                conn = get_db()
+                c = conn.cursor()
+                c.execute('SELECT DISTINCT question_id FROM history WHERE user_id = ?', (user_id,))
+                answered_ids = {row['question_id'] for row in c.fetchall()}
+                conn.close()
+                
+                # 从未答题中随机选择5道
+                unanswered = [q for q in all_questions if q.id not in answered_ids]
+                if unanswered:
+                    import random
+                    random.shuffle(unanswered)
+                    for question in unanswered[:5]:
+                        recommendations.append({
+                            'question': question,
+                            'score': 50.0,
+                            'reason': '系统为您推荐的新题目',
+                            'priority': 2
+                        })
+    except Exception as e:
+        print(f"Error getting recommendations: {e}")
+        import traceback
+        traceback.print_exc()
+        recommendations = []
+    
     return render_template('index.html', 
                           current_year=datetime.now().year,
-                          current_seq_qid=current_seq_qid)
+                          current_seq_qid=current_seq_qid,
+                          recommendations=recommendations)
 
 @app.route('/study')
 @login_required
@@ -450,12 +509,57 @@ def study():
 
     current_seq_qid = user_data['current_seq_qid'] if user_data and user_data['current_seq_qid'] else None
 
+    # Get intelligent recommendations
+    recommendations = []
+    try:
+        recommendations_data = learning_system.get_recommendations(user_id, count=5)
+        # Convert to list of question objects for display
+        for rec in recommendations_data:
+            question = learning_system.question_manager.get_question(rec['question_id'])
+            if question:
+                recommendations.append({
+                    'question': question,
+                    'score': rec['score'],
+                    'reason': rec['reason'],
+                    'priority': rec['priority']
+                })
+        
+        # 如果没有推荐，提供一些随机题目作为默认推荐
+        if not recommendations:
+            all_questions = learning_system.question_manager._db_accessor.get_all_questions()
+            if all_questions:
+                # 获取用户已答题的ID
+                conn = get_db()
+                c = conn.cursor()
+                c.execute('SELECT DISTINCT question_id FROM history WHERE user_id = ?', (user_id,))
+                answered_ids = {row['question_id'] for row in c.fetchall()}
+                conn.close()
+                
+                # 从未答题中随机选择5道
+                unanswered = [q for q in all_questions if q.id not in answered_ids]
+                if unanswered:
+                    import random
+                    random.shuffle(unanswered)
+                    for question in unanswered[:5]:
+                        recommendations.append({
+                            'question': question,
+                            'score': 50.0,
+                            'reason': '系统为您推荐的新题目',
+                            'priority': 2
+                        })
+    except Exception as e:
+        print(f"Error getting recommendations: {e}")
+        import traceback
+        traceback.print_exc()
+        recommendations = []
+
     return render_template(
         'study.html',
         current_year=datetime.now().year,
         current_seq_qid=current_seq_qid,
         total=total,
-        answered=answered
+        answered=answered,
+        recommendations=recommendations
     )
 
 @app.route('/study/video')
@@ -495,6 +599,120 @@ def study_docs():
 def study_ai():
     """AI learning assistant placeholder page."""
     return render_template('study_ai.html')
+
+@app.route('/api/ai/chat', methods=['POST'])
+@login_required
+def ai_chat():
+    """API endpoint for AI chat."""
+    try:
+        data = request.get_json()
+        message = data.get('message', '').strip()
+        
+        if not message:
+            return jsonify({
+                'success': False,
+                'error': '消息不能为空'
+            }), 400
+        
+        # 智谱AI (BigModel) API Key
+        # 优先从环境变量获取，否则使用默认值
+        api_key = os.environ.get('AI_API_KEY', 'a071b0cb84ce4f8a9057f78aa6e40f6c.tPmpuASAkobJJ7WV')
+        
+        import requests
+        
+        # 智谱AI API 配置（根据官方文档）
+        # API端点：https://open.bigmodel.cn/api/paas/v4/chat/completions
+        api_url = 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        # 构建提示词，专注于 Python 学习
+        system_prompt = """你是一个专业的 Python 学习助手，擅长：
+1. 解释 Python 语法和概念
+2. 解答编程问题
+3. 提供学习建议和练习题目
+4. 帮助调试代码错误
+
+请用中文回答，语言简洁明了，适合初学者理解。"""
+        
+        # 智谱AI API 请求格式（根据官方文档）
+        # 免费模型列表（按优先级排序）
+        free_models = ['glm-4-flash', 'glm-4', 'chatglm3-6b']
+        
+        # 尝试每个模型，直到成功
+        last_error = None
+        for model_name in free_models:
+            payload = {
+                'model': model_name,
+                'messages': [
+                    {'role': 'system', 'content': system_prompt},
+                    {'role': 'user', 'content': message}
+                ],
+                'temperature': 1.0,  # 根据官方文档示例
+                'max_tokens': 2048
+            }
+            
+            # 调用智谱AI API
+            try:
+                response = requests.post(
+                    api_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    # 智谱AI 响应格式与 OpenAI 兼容
+                    if 'choices' in result and len(result['choices']) > 0:
+                        ai_response = result['choices'][0]['message']['content']
+                        return jsonify({
+                            'success': True,
+                            'response': ai_response,
+                            'model_used': model_name  # 返回使用的模型名称
+                        })
+                    else:
+                        last_error = 'AI 返回格式异常'
+                        continue  # 尝试下一个模型
+                else:
+                    # 记录错误，尝试下一个模型
+                    error_detail = response.text
+                    try:
+                        error_json = response.json()
+                        error_detail = error_json.get('error', {}).get('message', error_detail)
+                    except:
+                        pass
+                    last_error = f'模型 {model_name} 调用失败: {error_detail}'
+                    # 如果是模型不存在错误，继续尝试下一个
+                    if response.status_code == 400 and '模型' in error_detail:
+                        continue
+                    # 其他错误也继续尝试
+                    continue
+                    
+            except requests.exceptions.Timeout:
+                last_error = f'模型 {model_name} 响应超时'
+                continue  # 尝试下一个模型
+            except requests.exceptions.RequestException as e:
+                last_error = f'模型 {model_name} 网络错误: {str(e)}'
+                continue  # 尝试下一个模型
+        
+        # 所有模型都失败了
+        return jsonify({
+            'success': False,
+            'error': '所有免费模型都不可用',
+            'detail': last_error or '请检查 API key 和网络连接'
+        }), 500
+            
+    except Exception as e:
+        print(f"Error in ai_chat: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/reset_history', methods=['POST'])
 @login_required
@@ -1518,6 +1736,109 @@ def statistics():
                           category_stats=category_stats,
                           worst_questions=worst_questions,
                           recent_exams=recent_exams)
+
+##############################
+# Learning System API Routes #
+##############################
+
+@app.route('/api/recommendations')
+@login_required
+def get_recommendations():
+    """API endpoint to get question recommendations."""
+    user_id = get_user_id()
+    count = request.args.get('count', 10, type=int)
+    
+    try:
+        recommendations = learning_system.get_recommendations(user_id, count)
+        return jsonify({
+            'success': True,
+            'recommendations': recommendations
+        })
+    except Exception as e:
+        print(f"Error getting recommendations: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/wrong_recommendations')
+@login_required
+def get_wrong_recommendations():
+    """API endpoint to get wrong question recommendations."""
+    user_id = get_user_id()
+    count = request.args.get('count', 5, type=int)
+    
+    try:
+        recommendations = learning_system.get_wrong_question_recommendations(user_id, count)
+        return jsonify({
+            'success': True,
+            'recommendations': recommendations
+        })
+    except Exception as e:
+        print(f"Error getting wrong recommendations: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/learning_progress')
+@login_required
+def get_learning_progress():
+    """API endpoint to get learning progress."""
+    user_id = get_user_id()
+    
+    try:
+        progress = learning_system.get_user_progress(user_id)
+        return jsonify({
+            'success': True,
+            'progress': progress
+        })
+    except Exception as e:
+        print(f"Error getting learning progress: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/learning_trend')
+@login_required
+def get_learning_trend():
+    """API endpoint to get learning trend."""
+    user_id = get_user_id()
+    days = request.args.get('days', 7, type=int)
+    
+    try:
+        progress_tracker = LearningProgressTracker(
+            learning_system.db_accessor,
+            learning_system.question_manager
+        )
+        trend = progress_tracker.get_learning_trend(user_id, days)
+        return jsonify({
+            'success': True,
+            'trend': trend
+        })
+    except Exception as e:
+        print(f"Error getting learning trend: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/cache_stats')
+@login_required
+def get_cache_stats():
+    """API endpoint to get cache statistics."""
+    try:
+        stats = learning_system.cache_manager.get_stats()
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 ##############################
 # APK Download Routes #
