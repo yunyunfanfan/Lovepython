@@ -13,8 +13,103 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
     <!-- 额外样式 -->
     {% block styles %}{% endblock %}
+    <style>
+        /* 页面背景视频/图片样式 */
+        body {
+            position: relative;
+            min-height: 100vh;
+        }
+        
+        /* 视频背景容器 */
+        .page-background-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -2;
+            opacity: 0.85;
+            pointer-events: none;
+        }
+        
+        /* 图片背景（备用） */
+        .page-background-image {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -2;
+            opacity: 0.8;
+            pointer-events: none;
+            display: none;
+        }
+        
+        /* 背景遮罩层，增强可读性 */
+        .page-background-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(240, 247, 255, 0.2) 0%, rgba(234, 245, 255, 0.2) 100%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* 电脑端优化 - 视频背景更明显 */
+        @media (min-width: 769px) {
+            .page-background-video {
+                opacity: 0.9;
+            }
+            
+            .page-background-image {
+                opacity: 0.85;
+            }
+            
+            .page-background-overlay {
+                background: linear-gradient(135deg, rgba(240, 247, 255, 0.15) 0%, rgba(234, 245, 255, 0.15) 100%);
+            }
+        }
+        
+        /* 移动端背景优化 */
+        @media (max-width: 768px) {
+            .page-background-video {
+                opacity: 0.6;
+                /* 移动端可以隐藏视频以节省流量 */
+                display: none;
+            }
+            
+            .page-background-image {
+                opacity: 0.5;
+                display: block;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .page-background-image {
+                opacity: 0.4;
+            }
+        }
+    </style>
 </head>
 <body>
+    <!-- 视频背景（优先，电脑端显示） -->
+    <video class="page-background-video" id="pageBackgroundVideo" autoplay muted loop playsinline>
+        <source src="{{ url_for('static', filename='background/login_bg.mp4') }}" type="video/mp4">
+        <source src="{{ url_for('static', filename='background/login_bg.webm') }}" type="video/webm">
+    </video>
+    
+    <!-- 图片背景（备用，如果视频不存在） -->
+    <img class="page-background-image" id="pageBackgroundImage" 
+         src="{{ url_for('static', filename='background/login_bg.jpg') }}" 
+         alt="背景图片"
+         onerror="this.style.display='none';">
+    
+    <!-- 背景遮罩层 -->
+    <div class="page-background-overlay"></div>
     <!-- 导航栏 -->
     <nav>
         <div class="nav-left">
@@ -56,6 +151,9 @@
             </a>
             <a href="{{ url_for('statistics') }}" class="nav-link{% if request.path == url_for('statistics') %} active{% endif %}">
                 <i class="fas fa-chart-bar"></i> 统计分析
+            </a>
+            <a href="{{ url_for('profile') }}" class="nav-link{% if request.path == url_for('profile') %} active{% endif %}">
+                <i class="fas fa-user"></i> 我的
             </a>
         </div>
         
@@ -334,21 +432,31 @@
                 });
             });
             
-            // 背景音乐控制
+            // 背景音乐控制（跨页面保持播放状态与进度）
             const backgroundMusic = document.getElementById('backgroundMusic');
             const musicToggle = document.getElementById('musicToggle');
             const musicVolumeControl = document.getElementById('musicVolumeControl');
             const musicVolume = document.getElementById('musicVolume');
             const musicVolumeValue = document.getElementById('musicVolumeValue');
+            const MUSIC_TIME_KEY = 'musicCurrentTime';
+            const MUSIC_PLAYING_KEY = 'musicPlaying';
+            const MUSIC_VOLUME_KEY = 'musicVolume';
+            let lastSave = 0;
             
             // 从 localStorage 加载音乐设置
-            const savedMusicState = localStorage.getItem('musicPlaying');
-            const savedVolume = localStorage.getItem('musicVolume');
+            const savedMusicState = localStorage.getItem(MUSIC_PLAYING_KEY);
+            const savedVolume = localStorage.getItem(MUSIC_VOLUME_KEY);
+            const savedTime = parseFloat(localStorage.getItem(MUSIC_TIME_KEY) || '0');
             
             if (savedVolume !== null) {
                 backgroundMusic.volume = savedVolume / 100;
                 musicVolume.value = savedVolume;
                 musicVolumeValue.textContent = savedVolume + '%';
+            }
+            
+            // 页面加载后恢复进度（尽量缩短切页后的静音时间）
+            if (!isNaN(savedTime) && savedTime > 0) {
+                backgroundMusic.currentTime = savedTime;
             }
             
             // 音乐播放/暂停切换
@@ -361,19 +469,24 @@
                         musicToggle.classList.add('playing');
                         musicToggle.querySelector('i').classList.remove('fa-music');
                         musicToggle.querySelector('i').classList.add('fa-pause');
-                        localStorage.setItem('musicPlaying', 'true');
+                        localStorage.setItem(MUSIC_PLAYING_KEY, 'true');
                     } else {
                         backgroundMusic.pause();
                         musicToggle.classList.remove('playing');
                         musicToggle.querySelector('i').classList.remove('fa-pause');
                         musicToggle.querySelector('i').classList.add('fa-music');
-                        localStorage.setItem('musicPlaying', 'false');
+                        localStorage.setItem(MUSIC_PLAYING_KEY, 'false');
+                        localStorage.setItem(MUSIC_TIME_KEY, String(backgroundMusic.currentTime));
                     }
                 });
-                
-                // 如果之前是播放状态，自动播放
+
+                // 如果之前是播放状态，自动播放并恢复进度
                 if (savedMusicState === 'true') {
-                    backgroundMusic.play().catch(e => {
+                    backgroundMusic.play().then(() => {
+                        if (!isNaN(savedTime) && savedTime > 0) {
+                            backgroundMusic.currentTime = savedTime;
+                        }
+                    }).catch(e => {
                         console.log('音乐自动播放失败:', e);
                     });
                     musicToggle.classList.add('playing');
@@ -388,7 +501,7 @@
                     const volume = this.value;
                     backgroundMusic.volume = volume / 100;
                     musicVolumeValue.textContent = volume + '%';
-                    localStorage.setItem('musicVolume', volume);
+                    localStorage.setItem(MUSIC_VOLUME_KEY, volume);
                 });
             }
             
@@ -402,15 +515,106 @@
                     musicVolumeControl.style.display = 'none';
                 });
             }
-            
+
             // 音乐播放结束自动重新播放（loop属性应该处理，但作为备用）
             backgroundMusic.addEventListener('ended', function() {
                 this.play();
             });
+
+            // 定期保存播放进度，减少切页丢失
+            backgroundMusic.addEventListener('timeupdate', function() {
+                const now = Date.now();
+                if (now - lastSave > 2000) { // 每2秒保存一次
+                    localStorage.setItem(MUSIC_TIME_KEY, String(backgroundMusic.currentTime));
+                    lastSave = now;
+                }
+            });
+
+            // 播放/暂停时同步状态
+            backgroundMusic.addEventListener('pause', function() {
+                localStorage.setItem(MUSIC_PLAYING_KEY, 'false');
+                localStorage.setItem(MUSIC_TIME_KEY, String(backgroundMusic.currentTime));
+            });
+
+            backgroundMusic.addEventListener('play', function() {
+                localStorage.setItem(MUSIC_PLAYING_KEY, 'true');
+            });
+
+            // 页面卸载前保存进度和状态
+            window.addEventListener('beforeunload', () => {
+                localStorage.setItem(MUSIC_TIME_KEY, String(backgroundMusic.currentTime));
+                localStorage.setItem(MUSIC_PLAYING_KEY, backgroundMusic.paused ? 'false' : 'true');
+            });
+            
+            // 检测并加载背景视频/图片
+            const pageVideo = document.getElementById('pageBackgroundVideo');
+            const pageImage = document.getElementById('pageBackgroundImage');
+            
+            if (pageVideo) {
+                pageVideo.addEventListener('loadeddata', function() {
+                    // 视频加载成功，隐藏图片
+                    if (pageImage) pageImage.style.display = 'none';
+                });
+                
+                pageVideo.addEventListener('canplay', function() {
+                    // 视频可以播放
+                    if (pageImage) pageImage.style.display = 'none';
+                });
+                
+                pageVideo.addEventListener('error', function() {
+                    // 视频加载失败，尝试显示图片
+                    pageVideo.style.display = 'none';
+                    if (pageImage) {
+                        pageImage.style.display = 'block';
+                        // 检测图片是否可以加载
+                        if (pageImage.complete && pageImage.naturalHeight !== 0) {
+                            // 图片已加载
+                        } else {
+                            pageImage.onload = function() {
+                                // 图片加载成功
+                            };
+                            pageImage.onerror = function() {
+                                // 图片也加载失败，隐藏图片
+                                pageImage.style.display = 'none';
+                            };
+                        }
+                    }
+                });
+                
+                // 尝试加载视频
+                pageVideo.load();
+            } else if (pageImage) {
+                // 没有视频元素，只检测图片
+                if (pageImage.complete && pageImage.naturalHeight !== 0) {
+                    pageImage.style.display = 'block';
+                } else {
+                    pageImage.onload = function() {
+                        pageImage.style.display = 'block';
+                    };
+                    pageImage.onerror = function() {
+                        // 图片加载失败，隐藏图片
+                        pageImage.style.display = 'none';
+                    };
+                }
+            }
         });
     </script>
     
     <!-- 额外脚本 -->
     {% block scripts %}{% endblock %}
+
+    <!-- Live2D 看板娘（来自 stevenjoezhang/live2d-widget） -->
+    <script>
+        // 可按需自定义更多设置，参考项目 README
+        window.live2d_path = "https://fastly.jsdelivr.net/gh/stevenjoezhang/live2d-widget@latest/";
+        window.live2d_settings = {
+            // live2d_path 指向的 dist 内含模型与脚本；默认模型：haruto
+            // model: { jsonPath: live2d_path + "model/tororo/tororo.model.json" },
+            display: { position: "right", width: 150, height: 300, hOffset: 10, vOffset: 0 },
+            mobile: { show: true, scale: 0.8 },
+            react: { opacityDefault: 1, opacityOnHover: 1 }
+        };
+    </script>
+    <script src="https://fastly.jsdelivr.net/gh/stevenjoezhang/live2d-widget@latest/autoload.js"></script>
 </body>
 </html>

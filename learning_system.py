@@ -782,31 +782,35 @@ class RecommendationEngine:
         Returns:
             推荐分数（0-100）
         """
-        score = 50.0  # 基础分数
-        
-        # 根据薄弱环节加分
-        weak_areas = stats.get('weak_areas', [])
-        if question.category in [area['category'] for area in weak_areas]:
-            score += 30
-        
-        # 根据难度加分（如果用户在该难度表现不佳）
+        # 基础分，保证未作答用户也有中性分值
+        score = 40.0
+
+        # 类目弱项权重（精准到类别）
+        category_stats = stats.get('category_stats', {})
+        if question.category in category_stats:
+            acc = category_stats[question.category]['accuracy']
+            if acc < 60:
+                score += min(30, (60 - acc) * 0.5)  # 最高 +30
+
+        # 难度弱项权重
         difficulty_stats = stats.get('difficulty_stats', {})
         if question.difficulty in difficulty_stats:
-            difficulty_accuracy = difficulty_stats[question.difficulty]['accuracy']
-            if difficulty_accuracy < 60:
-                score += 20
-        
-        # 根据题目类型加分
+            acc = difficulty_stats[question.difficulty]['accuracy']
+            if acc < 60:
+                score += min(24, (60 - acc) * 0.4)  # 最高 +24
+
+        # 题型弱项权重
         type_stats = stats.get('type_stats', {})
         if question.qtype in type_stats:
-            type_accuracy = type_stats[question.qtype]['accuracy']
-            if type_accuracy < 70:
-                score += 15
-        
-        # 随机因子（避免总是推荐相同的题目）
-        score += random.uniform(-5, 5)
-        
-        return min(100.0, max(0.0, score))
+            acc = type_stats[question.qtype]['accuracy']
+            if acc < 70:
+                score += min(21, (70 - acc) * 0.3)  # 最高 +21
+
+        # 少量探索分，避免长期同一排序
+        score += 5.0
+
+        # 去除随机性，数值稳定；并限制范围
+        return round(min(100.0, max(0.0, score)), 1)
     
     def _generate_recommendation_reason(self, question: Question, 
                                       stats: Dict[str, Any]) -> str:

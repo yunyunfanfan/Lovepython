@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Exam-Master</string>
+    <string name="app_name">LovePython</string>
     
     <!-- Main navigation -->
     <string name="nav_home">首页</string>
@@ -11,7 +11,7 @@
     <string name="nav_settings">设置</string>
     
     <!-- Home screen -->
-    <string name="welcome_title">欢迎使用Exam-Master</string>
+    <string name="welcome_title">欢迎使用LovePython</string>
     <string name="welcome_subtitle">智能练习，高效学习</string>
     <string name="random_practice">随机练习</string>
     <string name="sequential_practice">顺序练习</string>

@@ -230,6 +230,17 @@ print("Hello, Python!")
 
 ## 🔄 最近更新
 
+### v3.4 - 体验与运维工具 (2025-12)
+- **个人中心**: 支持修改密码、上传头像
+- **推荐度算法优化**: 推荐分更稳定，按类别/难度/题型薄弱环节加权
+- **题库类别填充**: 新脚本自动为题目打类别标签
+- **背景与氛围**: 首页/学习中心增加线条小狗插画与背景音乐控制（音量、进度记忆）
+- **Live2D 看板娘**: 可选集成 live2d-widget（模板中按需开启/禁用）
+- **APK 发布链路**: `tools/publish_apk.py` 一键发布最新 APK 至 `static/apk/latest.apk`
+- **题库同步到安卓**: `sync_questions_to_android.ps1` 将最新 questions.csv 复制到 Android assets
+- **题库重置重导**: `tools/reset_and_reimport.py` 清理依赖表后按 CSV 重导
+- **SDK 安装脚本**: `tools/setup_android_sdk.ps1` 用 commandline tools + sdkmanager 安装 SDK（免完整 Android Studio）
+
 ### v3.3 - 编程练习功能 (2025-12)
 - **💻 编程练习**: 新增在线编程练习功能，支持 Python 代码在线编写和执行
 - **🔒 安全执行**: 实现代码安全执行环境，限制危险操作，防止恶意代码
@@ -302,6 +313,26 @@ print("Hello, Python!")
 - **import_coding_questions.py**: 导入编程题到数据库的脚本
   ```bash
   python import_coding_questions.py
+  ```
+- **add_categories.py**: 为 questions.csv 自动打类别标签
+  ```bash
+  python tools/add_categories.py
+  ```
+- **reset_and_reimport.py**: 清空 history/favorites/exam_sessions/questions 后，按 CSV 重导题库
+  ```bash
+  python tools/reset_and_reimport.py
+  ```
+- **sync_questions_to_android.ps1**: 将最新 questions.csv 复制到 Android 工程 assets
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File .\sync_questions_to_android.ps1
+  ```
+- **publish_apk.py**: 从 Android 输出目录取最新 APK，复制到 `static/apk/latest.apk`
+  ```bash
+  python tools/publish_apk.py
+  ```
+- **setup_android_sdk.ps1**: 使用 commandline tools + sdkmanager 安装 Android SDK（无需完整 Android Studio）
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File .\tools\setup_android_sdk.ps1
   ```
 
 ## 🛠 开发者信息

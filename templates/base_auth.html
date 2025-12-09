@@ -12,9 +12,135 @@
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
     {% block styles %}{% endblock %}
+    <style>
+        /* 登录页面背景样式优化 */
+        .auth-page-wrapper {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* 视频背景容器 */
+        .auth-background-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            opacity: 0.85;
+        }
+        
+        /* 图片背景（备用） */
+        .auth-background-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            opacity: 0.8;
+            display: block; /* 默认显示，视频加载成功后由JS隐藏 */
+        }
+        
+        /* SVG背景（最后备用） */
+        .auth-page-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("{{ url_for('static', filename='dog_background.svg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.2;
+            z-index: 0;
+            /* 默认显示，如果视频或图片存在则通过JS隐藏 */
+        }
+        
+        /* 背景遮罩层，增强可读性 */
+        .auth-background-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(240, 247, 255, 0.2) 0%, rgba(234, 245, 255, 0.2) 100%);
+            z-index: 0;
+        }
+        
+        /* 确保内容在背景之上 */
+        .auth-page-wrapper > * {
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* 电脑端优化 - 视频背景更明显 */
+        @media (min-width: 769px) {
+            .auth-background-video {
+                opacity: 0.9;
+            }
+            
+            .auth-background-image {
+                opacity: 0.85;
+            }
+            
+            .auth-background-overlay {
+                background: linear-gradient(135deg, rgba(240, 247, 255, 0.15) 0%, rgba(234, 245, 255, 0.15) 100%);
+            }
+        }
+        
+        /* 移动端背景优化 */
+        @media (max-width: 768px) {
+            .auth-background-video {
+                opacity: 0.6;
+                /* 移动端可以隐藏视频以节省流量 */
+                display: none;
+            }
+            
+            .auth-background-image {
+                opacity: 0.5;
+                display: block;
+            }
+            
+            .auth-page-wrapper::before {
+                opacity: 0.5;
+                background-size: contain;
+                background-position: center bottom;
+                display: block;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .auth-background-image {
+                opacity: 0.4;
+            }
+            
+            .auth-page-wrapper::before {
+                opacity: 0.4;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="auth-page-wrapper" style="min-height: 100vh; display: flex; flex-direction: column; justify-content: center; background: linear-gradient(135deg, #f0f7ff 0%, #eaf5ff 100%);">
+    <div class="auth-page-wrapper" style="min-height: 100vh; display: flex; flex-direction: column; justify-content: center; background: linear-gradient(135deg, #f0f7ff 0%, #eaf5ff 100%), url(&quot;{{ url_for('static', filename='dog_background.svg') }}&quot;); background-size: cover; background-position: center;">
+        <!-- 视频背景（优先，电脑端显示） -->
+        <video class="auth-background-video" id="authBackgroundVideo" autoplay muted loop playsinline>
+            <source src="{{ url_for('static', filename='background/login_bg.mp4') }}" type="video/mp4">
+            <source src="{{ url_for('static', filename='background/login_bg.webm') }}" type="video/webm">
+        </video>
+        
+        <!-- 图片背景（备用，如果视频不存在） -->
+        <img class="auth-background-image" id="authBackgroundImage" 
+             src="{{ url_for('static', filename='background/login_bg.jpg') }}" 
+             alt="背景图片"
+             onerror="this.style.display='none'; document.getElementById('authBackgroundVideo').style.display='none';">
+        
+        <!-- 背景遮罩层 -->
+        <div class="auth-background-overlay"></div>
         <!-- Flash消息 -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -53,5 +179,87 @@
     </div>
     
     {% block scripts %}{% endblock %}
+    <script>
+        // 检测并加载背景视频/图片
+        document.addEventListener('DOMContentLoaded', function() {
+            const video = document.getElementById('authBackgroundVideo');
+            const image = document.getElementById('authBackgroundImage');
+            const wrapper = document.querySelector('.auth-page-wrapper');
+            let videoLoaded = false;
+            let imageLoaded = false;
+            
+            // 隐藏SVG背景的辅助函数
+            function hideSVGBackground() {
+                if (wrapper) {
+                    wrapper.style.setProperty('--show-svg-bg', 'none');
+                    const style = document.createElement('style');
+                    style.textContent = '.auth-page-wrapper::before { display: none !important; }';
+                    document.head.appendChild(style);
+                }
+            }
+            
+            // 检测视频是否可以加载
+            if (video) {
+                video.addEventListener('loadeddata', function() {
+                    // 视频加载成功
+                    videoLoaded = true;
+                    if (image) image.style.display = 'none';
+                    hideSVGBackground();
+                });
+                
+                video.addEventListener('canplay', function() {
+                    // 视频可以播放
+                    videoLoaded = true;
+                    if (image) image.style.display = 'none';
+                    hideSVGBackground();
+                });
+                
+                video.addEventListener('error', function() {
+                    // 视频加载失败，尝试显示图片
+                    video.style.display = 'none';
+                    if (image) {
+                        image.style.display = 'block';
+                        // 检测图片是否可以加载
+                        if (image.complete && image.naturalHeight !== 0) {
+                            // 图片已加载
+                            imageLoaded = true;
+                            hideSVGBackground();
+                        } else {
+                            image.onload = function() {
+                                imageLoaded = true;
+                                hideSVGBackground();
+                            };
+                            image.onerror = function() {
+                                // 图片也加载失败，显示SVG背景（默认显示）
+                                image.style.display = 'none';
+                            };
+                        }
+                    } else {
+                        // 没有图片元素，显示SVG背景（默认显示）
+                    }
+                });
+                
+                // 尝试加载视频
+                video.load();
+            } else if (image) {
+                // 没有视频元素，只检测图片
+                if (image.complete && image.naturalHeight !== 0) {
+                    imageLoaded = true;
+                    image.style.display = 'block';
+                    hideSVGBackground();
+                } else {
+                    image.onload = function() {
+                        imageLoaded = true;
+                        image.style.display = 'block';
+                        hideSVGBackground();
+                    };
+                    image.onerror = function() {
+                        // 图片加载失败，显示SVG背景（默认显示）
+                        image.style.display = 'none';
+                    };
+                }
+            }
+        });
+    </script>
 </body>
 </html>

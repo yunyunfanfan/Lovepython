@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}我的 - LovePython{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <h2 class="card-title mb-3"><i class="fas fa-user"></i> 我的</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'success' %}alert-success{% else %}alert-info{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="post" enctype="multipart/form-data">
+        <div class="mb-3 text-center">
+            <div style="width: 140px; height: 140px; border-radius: 50%; overflow: hidden; margin: 0 auto; border: 3px solid rgba(0,0,0,0.08); background: #f7f9fc;">
+                {% if avatar_url %}
+                <img src="{{ avatar_url }}" alt="头像" style="width: 100%; height: 100%; object-fit: cover;">
+                {% else %}
+                <img src="{{ url_for('static', filename='dog_background.svg') }}" alt="头像" style="width: 100%; height: 100%; object-fit: cover;">
+                {% endif %}
+            </div>
+            <label class="btn btn-outline-primary btn-sm mt-2">
+                <i class="fas fa-upload"></i> 上传头像
+                <input type="file" name="avatar" accept=".png,.jpg,.jpeg,.gif,.webp" style="display:none;">
+            </label>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">用户名</label>
+            <input type="text" name="username" class="form-control" value="{{ username }}" placeholder="输入新的用户名">
+            <small class="text-muted">修改后会立即生效，需唯一且不少于1个字符</small>
+        </div>
+
+        <hr>
+        <h5 class="mb-3">修改密码</h5>
+        <div class="form-group">
+            <label class="form-label">当前密码</label>
+            <input type="password" name="current_password" class="form-control" placeholder="输入当前密码">
+        </div>
+        <div class="form-group">
+            <label class="form-label">新密码</label>
+            <input type="password" name="new_password" class="form-control" placeholder="新密码不少于6位">
+        </div>
+        <div class="form-group">
+            <label class="form-label">确认新密码</label>
+            <input type="password" name="confirm_password" class="form-control" placeholder="再次输入新密码">
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 保存</button>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> 退出登录</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+

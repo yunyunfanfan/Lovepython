@@ -37,6 +37,7 @@ from flask import (
     send_file
 )
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 
 # Import learning system module
 from learning_system import (
@@ -63,6 +64,9 @@ DOC_DIR = os.path.join(app.static_folder, 'docs')
 
 # Initialize Learning System (Singleton pattern)
 learning_system = LearningSystem()
+
+# Avatar upload configuration
+ALLOWED_AVATAR_EXTS = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
 
 #############################
 # Database Helper Functions #
@@ -423,6 +427,101 @@ def logout():
     session.clear()
     flash("您已成功退出登录", "success")
     return redirect(url_for('login'))
+
+##############################
+# Profile / Account          #
+##############################
+
+def get_user_avatar_url(user_id):
+    """Return the avatar url for the user if exists."""
+    if not user_id:
+        return None
+    avatar_dir = os.path.join(app.static_folder, 'avatars')
+    if not os.path.exists(avatar_dir):
+        return None
+    for ext in ALLOWED_AVATAR_EXTS:
+        candidate = os.path.join(avatar_dir, f"user_{user_id}{ext}")
+        if os.path.exists(candidate):
+            return url_for('static', filename=f"avatars/user_{user_id}{ext}")
+    return None
+
+
+@app.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    """User profile page."""
+    user_id = get_user_id()
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT username, password_hash FROM users WHERE id=?', (user_id,))
+    user = c.fetchone()
+    current_username = user['username'] if user else ''
+    password_hash = user['password_hash'] if user else ''
+
+    message_type = None
+
+    if request.method == 'POST':
+        new_username = request.form.get('username', '').strip()
+        avatar = request.files.get('avatar')
+        current_password = request.form.get('current_password', '')
+        new_password = request.form.get('new_password', '')
+        confirm_password = request.form.get('confirm_password', '')
+
+        # Handle password change
+        if current_password or new_password or confirm_password:
+            if not current_password or not new_password or not confirm_password:
+                flash("请完整填写当前密码、新密码和确认密码", "error")
+            elif new_password != confirm_password:
+                flash("两次输入的新密码不一致", "error")
+            elif len(new_password) < 6:
+                flash("新密码长度不能少于6个字符", "error")
+            elif not user or not check_password_hash(password_hash, current_password):
+                flash("当前密码不正确", "error")
+            else:
+                new_hash = generate_password_hash(new_password)
+                c.execute('UPDATE users SET password_hash=? WHERE id=?', (new_hash, user_id))
+                conn.commit()
+                flash("密码已更新", "success")
+
+        # Handle username change
+        if new_username and new_username != current_username:
+            # Check if username exists
+            c.execute('SELECT id FROM users WHERE username=? AND id != ?', (new_username, user_id))
+            exists = c.fetchone()
+            if exists:
+                flash("用户名已存在，请更换用户名", "error")
+            else:
+                c.execute('UPDATE users SET username=? WHERE id=?', (new_username, user_id))
+                conn.commit()
+                current_username = new_username
+                flash("用户名已更新", "success")
+
+        # Handle avatar upload
+        if avatar and avatar.filename:
+            filename = secure_filename(avatar.filename)
+            _, ext = os.path.splitext(filename)
+            ext = ext.lower()
+            if ext not in ALLOWED_AVATAR_EXTS:
+                flash("头像格式不支持，请上传 png/jpg/jpeg/gif/webp", "error")
+            else:
+                avatar_dir = os.path.join(app.static_folder, 'avatars')
+                os.makedirs(avatar_dir, exist_ok=True)
+                save_path = os.path.join(avatar_dir, f"user_{user_id}{ext}")
+                # 删除其他扩展的旧头像
+                for old_ext in ALLOWED_AVATAR_EXTS:
+                    old_path = os.path.join(avatar_dir, f"user_{user_id}{old_ext}")
+                    if os.path.exists(old_path):
+                        try:
+                            os.remove(old_path)
+                        except Exception:
+                            pass
+                avatar.save(save_path)
+                flash("头像已上传", "success")
+
+    avatar_url = get_user_avatar_url(user_id)
+    conn.close()
+
+    return render_template('profile.html', username=current_username, avatar_url=avatar_url)
 
 ##############################
 # Main Application Routes #
