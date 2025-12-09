@@ -21,6 +21,9 @@
                 <a href="{{ url_for('study_ai') }}" class="btn btn-info main-action-btn">
                     <i class="fas fa-robot"></i> AI助学
                 </a>
+                <a href="{{ url_for('study_coding') }}" class="btn btn-warning main-action-btn">
+                    <i class="fas fa-code"></i> 编程练习
+                </a>
             </div>
         </div>
     </div>
@@ -56,6 +59,16 @@
             <p class="card-text">进入 AI 对话界面，提问、讲解与练习辅导。</p>
             <div class="mt-auto">
                 <a href="{{ url_for('study_ai') }}" class="btn btn-sm btn-outline-primary">进入 AI 助学</a>
+            </div>
+        </div>
+        <div class="card feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-code"></i>
+            </div>
+            <h3 class="card-title">编程练习</h3>
+            <p class="card-text">在线编写 Python 代码，提交后自动判断对错，提升编程能力。</p>
+            <div class="mt-auto">
+                <a href="{{ url_for('study_coding') }}" class="btn btn-sm btn-outline-primary">进入编程练习</a>
             </div>
         </div>
     </div>

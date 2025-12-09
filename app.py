@@ -600,6 +600,181 @@ def study_ai():
     """AI learning assistant placeholder page."""
     return render_template('study_ai.html')
 
+@app.route('/study/coding')
+@login_required
+def study_coding():
+    """Programming practice hub."""
+    conn = get_db()
+    c = conn.cursor()
+    # 获取所有编程题（题型为"编程题"）
+    c.execute("SELECT * FROM questions WHERE qtype = '编程题' OR qtype LIKE '%编程%' ORDER BY id")
+    coding_questions = []
+    for row in c.fetchall():
+        coding_questions.append({
+            'id': row['id'],
+            'stem': row['stem'],
+            'difficulty': row['difficulty'],
+            'category': row['category']
+        })
+    conn.close()
+    return render_template('study_coding.html', questions=coding_questions)
+
+@app.route('/study/coding/<qid>', methods=['GET', 'POST'])
+@login_required
+def coding_question(qid):
+    """Programming question page."""
+    user_id = get_user_id()
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT * FROM questions WHERE id = ?', (qid,))
+    row = c.fetchone()
+    conn.close()
+    
+    if not row:
+        flash("题目不存在", "error")
+        return redirect(url_for('study_coding'))
+    
+    question = {
+        'id': row['id'],
+        'stem': row['stem'],
+        'answer': row['answer'],  # 期望输出或测试用例
+        'difficulty': row['difficulty'],
+        'category': row['category'],
+        'options': json.loads(row['options']) if row['options'] else {}
+    }
+    
+    # 处理代码提交
+    if request.method == 'POST':
+        user_code = request.form.get('code', '').strip()
+        
+        if not user_code:
+            flash("代码不能为空", "error")
+            return render_template('coding_question.html', question=question)
+        
+        # 执行代码并判断
+        result = execute_and_check_code(user_code, question['answer'])
+        
+        # 保存答题记录
+        correct = 1 if result['correct'] else 0
+        conn = get_db()
+        c = conn.cursor()
+        c.execute(
+            'INSERT INTO history (user_id, question_id, user_answer, correct) VALUES (?,?,?,?)',
+            (user_id, qid, user_code[:500], correct)  # 限制代码长度
+        )
+        conn.commit()
+        conn.close()
+        
+        if result['correct']:
+            flash("恭喜！代码运行正确！", "success")
+        else:
+            flash(f"代码运行有误：{result['error']}", "error")
+        
+        return render_template('coding_question.html', 
+                             question=question, 
+                             user_code=user_code,
+                             result=result)
+    
+    return render_template('coding_question.html', question=question)
+
+def execute_and_check_code(user_code, expected_output):
+    """
+    安全执行用户代码并判断是否正确
+    
+    Args:
+        user_code: 用户提交的代码
+        expected_output: 期望输出（可以是输出字符串或测试用例）
+    
+    Returns:
+        dict: 包含执行结果和判断结果
+    """
+    import subprocess
+    import sys
+    import tempfile
+    import os
+    import re
+    
+    result = {
+        'correct': False,
+        'output': '',
+        'error': '',
+        'execution_time': 0
+    }
+    
+    # 安全检查：禁止危险操作
+    dangerous_keywords = ['import os', 'import sys', '__import__', 'eval', 'exec', 
+                          'open(', 'file(', 'input(', 'raw_input', 'subprocess',
+                          'compile(', 'reload(', '__builtins__']
+    
+    code_lower = user_code.lower()
+    for keyword in dangerous_keywords:
+        if keyword.lower() in code_lower:
+            result['error'] = f'代码包含不允许的操作：{keyword}'
+            return result
+    
+    try:
+        # 创建临时文件
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
+            f.write(user_code)
+            temp_file = f.name
+        
+        try:
+            # 执行代码，限制时间和资源
+            start_time = time.time()
+            process = subprocess.run(
+                [sys.executable, temp_file],
+                capture_output=True,
+                text=True,
+                timeout=5,  # 5秒超时
+                cwd=tempfile.gettempdir(),
+                env={**os.environ, 'PYTHONPATH': ''}  # 限制Python路径
+            )
+            execution_time = time.time() - start_time
+            
+            result['execution_time'] = execution_time
+            result['output'] = process.stdout.strip()
+            
+            if process.returncode != 0:
+                error_msg = process.stderr.strip() or '代码执行出错'
+                # 简化错误信息，移除文件路径
+                error_msg = re.sub(r'File "[^"]+", line \d+', '代码', error_msg)
+                result['error'] = error_msg
+                return result
+            
+            # 判断输出是否正确
+            # 如果expected_output是测试用例格式（如：输入:1,2 输出:3），需要解析
+            expected = expected_output.strip()
+            if '输出:' in expected or '输出：' in expected:
+                # 提取期望输出
+                if '输出:' in expected:
+                    expected = expected.split('输出:')[1].strip()
+                else:
+                    expected = expected.split('输出：')[1].strip()
+            
+            # 比较输出（去除首尾空白，支持多行）
+            actual_output = result['output'].strip()
+            expected_output_clean = expected.strip()
+            
+            # 支持多行输出比较
+            result['correct'] = (actual_output == expected_output_clean)
+            
+            if not result['correct']:
+                result['error'] = f"期望输出：\n{expected_output_clean}\n\n实际输出：\n{actual_output}"
+            
+        finally:
+            # 清理临时文件
+            try:
+                os.unlink(temp_file)
+            except:
+                pass
+                
+    except subprocess.TimeoutExpired:
+        result['error'] = '代码执行超时（超过5秒），请优化代码性能'
+    except Exception as e:
+        result['error'] = f'执行错误：{str(e)}'
+    
+    return result
+
 @app.route('/api/ai/chat', methods=['POST'])
 @login_required
 def ai_chat():

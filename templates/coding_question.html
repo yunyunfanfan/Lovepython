@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+
+{% block title %}编程题 - LovePython{% endblock %}
+
+{% block content %}
+<div class="hero-section mb-4">
+    <div class="card">
+        <div class="hero-content d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <h1 class="display-title mb-2"><i class="fas fa-code"></i> 编程题 #{{ question.id }}</h1>
+            </div>
+            <div>
+                <a href="{{ url_for('study_coding') }}" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-arrow-left"></i> 返回题目列表
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <h3 class="card-title">
+                <i class="fas fa-question-circle"></i> 题目描述
+            </h3>
+            <div class="question-content">
+                <p class="mb-3">{{ question.stem }}</p>
+                
+                {% if question.options %}
+                <div class="mb-3">
+                    <strong>示例：</strong>
+                    <ul>
+                        {% for key, value in question.options.items() %}
+                        <li><strong>{{ key }}:</strong> {{ value }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-lightbulb"></i> 
+                    <strong>提示：</strong>编写 Python 代码，输出结果应与期望输出一致。
+                    {% if question.answer %}
+                    <br><strong>期望输出：</strong><code>{{ question.answer }}</code>
+                    {% endif %}
+                </div>
+                
+                {% if question.difficulty %}
+                <div class="mb-2">
+                    <span class="badge badge-primary">难度：{{ question.difficulty }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <h3 class="card-title">
+                <i class="fas fa-code"></i> 代码编辑器
+            </h3>
+            <form method="POST" id="codingForm">
+                <div class="form-group">
+                    <label for="code" class="form-label">编写您的 Python 代码：</label>
+                    <textarea 
+                        id="code" 
+                        name="code" 
+                        class="form-control code-editor" 
+                        rows="15" 
+                        placeholder="# 在这里编写您的 Python 代码
+# 例如：
+print('Hello, Python!')"
+                        required>{{ user_code if user_code else '' }}</textarea>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i> 提交代码
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="clearCode()">
+                        <i class="fas fa-eraser"></i> 清空
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% if result %}
+<div class="card mb-4">
+    <h3 class="card-title">
+        <i class="fas fa-check-circle"></i> 执行结果
+    </h3>
+    
+    {% if result.correct %}
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i> 
+        <strong>恭喜！代码运行正确！</strong>
+        <p class="mb-0 mt-2">执行时间：{{ "%.3f"|format(result.execution_time) }} 秒</p>
+        {% if result.output %}
+        <p class="mb-0 mt-2">输出：<code>{{ result.output }}</code></p>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="alert alert-danger">
+        <i class="fas fa-times-circle"></i> 
+        <strong>代码运行有误</strong>
+        {% if result.error %}
+        <p class="mb-0 mt-2">{{ result.error }}</p>
+        {% endif %}
+        {% if result.output %}
+        <p class="mb-0 mt-2">实际输出：<code>{{ result.output }}</code></p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+    .code-editor {
+        font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
+        font-size: 14px;
+        line-height: 1.6;
+        background-color: #f8f9fa;
+        border: 1px solid var(--gray-300);
+        resize: vertical;
+    }
+    
+    .code-editor:focus {
+        background-color: #fff;
+        border-color: var(--primary-color);
+    }
+    
+    .question-content {
+        line-height: 1.8;
+    }
+    
+    .question-content code {
+        background-color: #f5f5f5;
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+    }
+</style>
+
+<script>
+    function clearCode() {
+        if (confirm('确定要清空代码吗？')) {
+            document.getElementById('code').value = '';
+            document.getElementById('code').focus();
+        }
+    }
+    
+    // 自动聚焦代码编辑器
+    document.addEventListener('DOMContentLoaded', function() {
+        const codeEditor = document.getElementById('code');
+        if (codeEditor) {
+            codeEditor.focus();
+        }
+    });
+</script>
+{% endblock %}
+

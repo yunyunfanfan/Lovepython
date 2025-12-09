@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}编程练习 - LovePython{% endblock %}
+
+{% block content %}
+<div class="hero-section mb-4">
+    <div class="card">
+        <div class="hero-content d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <h1 class="display-title mb-2"><i class="fas fa-code"></i> 编程练习</h1>
+                <p class="lead mb-0">在线编写 Python 代码，提交后自动判断对错</p>
+            </div>
+            <a href="{{ url_for('study') }}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-arrow-left"></i> 返回学习主页
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2 class="card-title mb-3">
+        <i class="fas fa-list"></i> 编程题目列表
+    </h2>
+    
+    {% if questions %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>题号</th>
+                    <th>题目描述</th>
+                    <th>难度</th>
+                    <th>类别</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for q in questions %}
+                <tr>
+                    <td>{{ q.id }}</td>
+                    <td>{{ q.stem[:80] }}{% if q.stem|length > 80 %}...{% endif %}</td>
+                    <td>
+                        {% if q.difficulty %}
+                        <span class="badge badge-primary">{{ q.difficulty }}</span>
+                        {% else %}
+                        <span class="badge badge-secondary">未分类</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if q.category %}
+                        <span class="badge badge-info">{{ q.category }}</span>
+                        {% else %}
+                        <span class="badge badge-secondary">未分类</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('coding_question', qid=q.id) }}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-play"></i> 开始练习
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> 
+        当前没有编程题目。请在题库中添加题型为"编程题"的题目。
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
