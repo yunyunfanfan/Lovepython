@@ -4,6 +4,7 @@
 ![Python](https://img.shields.io/badge/Python-3.6+-blue.svg)
 ![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20Mobile-blue.svg)
 
+![项目截图](./picture/2.png)
 一款专为 **Python 学习**设计的全平台在线刷题系统，基于 **Flask** 实现，现已支持 **Web端** 和 **Android移动端**。提供从题库管理、用户注册登录，到随机出题、顺序答题、定时模式、模拟考试，以及视频学习、文档学习、AI助学、**编程练习**等多种功能，帮助 Python 学习者随时随地高效提升编程能力。
 
 ## 🌟 功能特性
