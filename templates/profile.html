@@ -16,19 +16,20 @@
         {% endif %}
     {% endwith %}
 
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" id="profileForm">
         <div class="mb-3 text-center">
-            <div style="width: 140px; height: 140px; border-radius: 50%; overflow: hidden; margin: 0 auto; border: 3px solid rgba(0,0,0,0.08); background: #f7f9fc;">
-                {% if avatar_url %}
-                <img src="{{ avatar_url }}" alt="头像" style="width: 100%; height: 100%; object-fit: cover;">
-                {% else %}
-                <img src="{{ url_for('static', filename='dog_background.svg') }}" alt="头像" style="width: 100%; height: 100%; object-fit: cover;">
-                {% endif %}
+            <div style="width: 140px; height: 140px; border-radius: 50%; overflow: hidden; margin: 0 auto; border: 3px solid rgba(0,0,0,0.08); background: #f7f9fc; position: relative;">
+                <img id="avatarImg" src="{% if avatar_url %}{{ avatar_url }}{% else %}{{ url_for('static', filename='dog_background.svg') }}{% endif %}" alt="头像" style="width: 100%; height: 100%; object-fit: cover;">
+                <!-- 上传中的加载指示器 -->
+                <div id="uploadingIndicator" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center;">
+                    <i class="fas fa-spinner fa-spin" style="color: white; font-size: 2em;"></i>
+                </div>
             </div>
-            <label class="btn btn-outline-primary btn-sm mt-2">
+            <label class="btn btn-outline-primary btn-sm mt-2" style="cursor: pointer;">
                 <i class="fas fa-upload"></i> 上传头像
-                <input type="file" name="avatar" accept=".png,.jpg,.jpeg,.gif,.webp" style="display:none;">
+                <input type="file" id="avatarInput" name="avatar" accept=".png,.jpg,.jpeg,.gif,.webp,.bmp,.svg,image/*" style="display:none;" onchange="uploadAvatarInstantly(this)">
             </label>
+            <div id="avatarUploadMessage" class="mt-2" style="min-height: 24px;"></div>
         </div>
 
         <div class="form-group">
@@ -58,5 +59,111 @@
         </div>
     </form>
 </div>
+
+<script>
+// 即时上传头像功能
+async function uploadAvatarInstantly(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    const messageDiv = document.getElementById('avatarUploadMessage');
+    const avatarImg = document.getElementById('avatarImg');
+    const indicator = document.getElementById('uploadingIndicator');
+    
+    // 获取文件扩展名（更可靠的验证方式）
+    const fileName = file.name.toLowerCase();
+    const fileExt = fileName.substring(fileName.lastIndexOf('.'));
+    const allowedExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'];
+    
+    // 调试信息
+    console.log('上传文件信息:');
+    console.log('- 文件名:', file.name);
+    console.log('- 扩展名:', fileExt);
+    console.log('- MIME类型:', file.type);
+    console.log('- 文件大小:', file.size, 'bytes');
+    
+    // 验证文件扩展名（比MIME类型更可靠）
+    if (!allowedExts.includes(fileExt)) {
+        messageDiv.innerHTML = `<small class="text-danger">❌ 不支持的文件格式 ${fileExt}，请上传图片文件</small>`;
+        input.value = '';
+        return;
+    }
+    
+    // 额外验证：如果MIME类型存在但不是图片，也提示
+    if (file.type && !file.type.startsWith('image/')) {
+        messageDiv.innerHTML = `<small class="text-danger">❌ 文件类型异常 (${file.type})，请确认是图片文件</small>`;
+        input.value = '';
+        return;
+    }
+    
+    // 验证文件大小（5MB）
+    if (file.size > 5 * 1024 * 1024) {
+        messageDiv.innerHTML = '<small class="text-danger">❌ 文件过大，请上传小于5MB的图片</small>';
+        input.value = '';
+        return;
+    }
+    
+    // 显示预览和上传状态
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        avatarImg.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    
+    // 显示上传中状态
+    indicator.style.display = 'flex';
+    messageDiv.innerHTML = '<small class="text-info"><i class="fas fa-spinner fa-spin"></i> 正在上传...</small>';
+    
+    // 创建FormData并上传
+    const formData = new FormData();
+    formData.append('avatar', file);
+    
+    try {
+        const response = await fetch('/api/upload_avatar', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        indicator.style.display = 'none';
+        
+        if (data.success) {
+            // 上传成功
+            messageDiv.innerHTML = `<small class="text-success">✅ ${data.message}</small>`;
+            // 更新头像URL（防止缓存）
+            if (data.avatar_url) {
+                avatarImg.src = data.avatar_url;
+            }
+            // 3秒后清除消息
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 3000);
+        } else {
+            // 上传失败
+            messageDiv.innerHTML = `<small class="text-danger">❌ ${data.error}</small>`;
+            // 恢复原头像（如果有）
+            const originalSrc = avatarImg.getAttribute('data-original');
+            if (originalSrc) {
+                avatarImg.src = originalSrc;
+            }
+        }
+    } catch (error) {
+        indicator.style.display = 'none';
+        messageDiv.innerHTML = '<small class="text-danger">❌ 上传失败，请检查网络连接</small>';
+        console.error('上传错误:', error);
+    }
+    
+    // 清空input，允许重新上传相同文件
+    input.value = '';
+}
+
+// 保存原始头像URL
+document.addEventListener('DOMContentLoaded', function() {
+    const avatarImg = document.getElementById('avatarImg');
+    avatarImg.setAttribute('data-original', avatarImg.src);
+});
+</script>
+
 {% endblock %}
 

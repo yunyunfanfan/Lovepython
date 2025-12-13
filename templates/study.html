@@ -191,8 +191,31 @@
 
 <script>
     function refreshRecommendations() {
-        // 刷新页面以获取新的推荐
-        window.location.reload();
+        // 显示加载动画
+        const button = event.target.closest('button');
+        const originalHTML = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在刷新...';
+        
+        // 调用API获取新推荐（添加随机参数强制刷新）
+        fetch('/api/recommendations?count=5&refresh=' + Date.now())
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.recommendations && data.recommendations.length > 0) {
+                    // 重新加载页面以显示新推荐
+                    window.location.reload();
+                } else {
+                    alert('暂时没有新的推荐，请稍后再试');
+                    button.disabled = false;
+                    button.innerHTML = originalHTML;
+                }
+            })
+            .catch(error => {
+                console.error('刷新推荐失败:', error);
+                alert('刷新失败，请重试');
+                button.disabled = false;
+                button.innerHTML = originalHTML;
+            });
     }
 </script>
 {% endblock %}

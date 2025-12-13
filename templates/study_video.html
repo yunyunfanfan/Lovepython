@@ -3,38 +3,301 @@
 {% block title %}视频学习 - LovePython{% endblock %}
 
 {% block content %}
-<div class="hero-section mb-4">
-    <div class="card">
-        <div class="hero-content">
-            <h1 class="display-title mb-2"><i class="fas fa-play-circle"></i> 视频学习</h1>
-            <p class="lead mb-3">内置本地视频，直接在线播放</p>
-            <a href="{{ url_for('study') }}" class="btn btn-outline-primary btn-sm">
-                <i class="fas fa-arrow-left"></i> 返回学习主页
-            </a>
+<style>
+    /* 整体布局 */
+    .video-container {
+        display: flex;
+        gap: 0;
+        min-height: calc(100vh - 200px);
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    /* 左侧边栏 */
+    .video-sidebar {
+        width: 300px;
+        background: #f8f9fa;
+        border-right: 1px solid #e1e4e8;
+        overflow-y: auto;
+        overflow-x: hidden;
+        flex-shrink: 0;
+        max-height: calc(100vh - 100px);
+    }
+    
+    /* 左侧滚动条样式 - 更明显的滚动条 */
+    .video-sidebar::-webkit-scrollbar {
+        width: 12px;
+    }
+    
+    .video-sidebar::-webkit-scrollbar-track {
+        background: #e9ecef;
+        border-radius: 6px;
+        margin: 5px 0;
+    }
+    
+    .video-sidebar::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border-radius: 6px;
+        border: 2px solid #e9ecef;
+    }
+    
+    .video-sidebar::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+        box-shadow: 0 0 6px rgba(245, 87, 108, 0.5);
+    }
+    
+    .video-sidebar-header {
+        padding: 20px;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .video-sidebar-header h2 {
+        margin: 0;
+        font-size: 1.3rem;
+        font-weight: 600;
+    }
+    
+    .video-sidebar-header p {
+        margin: 5px 0 0 0;
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .video-nav {
+        padding: 10px 0;
+    }
+    
+    .video-nav-item {
+        display: block;
+        padding: 15px 20px;
+        color: #333;
+        text-decoration: none;
+        border-left: 3px solid transparent;
+        transition: all 0.2s;
+        font-size: 0.95rem;
+        line-height: 1.4;
+    }
+    
+    .video-nav-item:hover {
+        background: #e9ecef;
+        color: #f5576c;
+        border-left-color: #f5576c;
+    }
+    
+    .video-nav-item.active {
+        background: white;
+        color: #f5576c;
+        border-left-color: #f5576c;
+        font-weight: 600;
+    }
+    
+    .video-nav-item .video-icon {
+        margin-right: 8px;
+        opacity: 0.6;
+    }
+    
+    /* 右侧内容区 */
+    .video-content {
+        flex: 1;
+        padding: 30px 40px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        max-height: calc(100vh - 100px);
+    }
+    
+    /* 右侧滚动条样式 */
+    .video-content::-webkit-scrollbar {
+        width: 10px;
+    }
+    
+    .video-content::-webkit-scrollbar-track {
+        background: #f9f9f9;
+    }
+    
+    .video-content::-webkit-scrollbar-thumb {
+        background: #f5576c;
+        border-radius: 5px;
+    }
+    
+    .video-content::-webkit-scrollbar-thumb:hover {
+        background: #e04858;
+    }
+    
+    .video-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e1e4e8;
+    }
+    
+    .video-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0;
+    }
+    
+    .video-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    /* 视频播放器 */
+    .video-player {
+        width: 100%;
+        max-width: 100%;
+        background: #000;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        margin-bottom: 20px;
+    }
+    
+    .video-player video {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+    
+    .video-info {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 20px;
+    }
+    
+    .video-info h3 {
+        margin: 0 0 10px 0;
+        font-size: 1.1rem;
+        color: #333;
+    }
+    
+    .video-info p {
+        margin: 5px 0;
+        color: #666;
+        font-size: 0.95rem;
+    }
+    
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+        .video-container {
+            flex-direction: column;
+        }
+        
+        .video-sidebar {
+            width: 100%;
+            max-height: 300px;
+        }
+        
+        .video-content {
+            padding: 20px;
+        }
+        
+        .video-title {
+            font-size: 1.5rem;
+        }
+    }
+    
+    /* 空状态 */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6a737d;
+    }
+    
+    .empty-state i {
+        font-size: 4em;
+        color: #ddd;
+        margin-bottom: 20px;
+    }
+</style>
+
+<div class="video-container">
+    <!-- 左侧边栏 -->
+    <div class="video-sidebar">
+        <div class="video-sidebar-header">
+            <h2><i class="fas fa-video"></i> 视频目录</h2>
+            <p>共 {{ videos|length }} 个视频</p>
         </div>
+        
+        <nav class="video-nav">
+            {% if videos %}
+                {% for video in videos %}
+                <a href="{{ url_for('study_video', video=video.filename) }}" 
+                   class="video-nav-item {% if selected_video == video.filename %}active{% endif %}">
+                    <i class="fas fa-play-circle video-icon"></i>
+                    {{ video.display_name }}
+                </a>
+                {% endfor %}
+            {% else %}
+                <div style="padding: 20px; text-align: center; color: #6a737d;">
+                    <p>暂无视频</p>
+                    <small>请将视频文件放入<br><code>static/videos</code> 目录</small>
+                </div>
+            {% endif %}
+        </nav>
+    </div>
+    
+    <!-- 右侧内容区 -->
+    <div class="video-content">
+        {% if selected_video %}
+            <div class="video-header">
+                <h1 class="video-title">{{ selected_display_name or '视频' }}</h1>
+                <div class="video-actions">
+                    <a href="{{ url_for('study') }}" 
+                       class="btn btn-outline-primary btn-sm"
+                       title="返回学习主页">
+                        <i class="fas fa-arrow-left"></i> 返回
+                    </a>
+                </div>
+            </div>
+            
+            <!-- 视频播放器 -->
+            <div class="video-player">
+                <video controls preload="metadata" controlsList="nodownload">
+                    <source src="{{ url_for('static', filename='videos/' ~ selected_video) }}">
+                    您的浏览器不支持视频播放。
+                </video>
+            </div>
+            
+            <!-- 视频信息 -->
+            <div class="video-info">
+                <h3><i class="fas fa-info-circle"></i> 视频信息</h3>
+                <p><strong>名称：</strong>{{ selected_display_name }}</p>
+                <p><strong>格式：</strong>{{ selected_video.split('.')[-1].upper() }}</p>
+                <p><strong>说明：</strong>本地视频文件，支持暂停、快进、全屏等操作</p>
+            </div>
+            
+            <div style="margin-top: 30px; padding: 20px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 6px;">
+                <h4 style="margin: 0 0 10px 0; color: #856404;">
+                    <i class="fas fa-lightbulb"></i> 学习提示
+                </h4>
+                <ul style="margin: 0; padding-left: 20px; color: #856404;">
+                    <li>可以通过左侧目录快速切换视频</li>
+                    <li>建议配合文档学习和AI助学加深理解</li>
+                    <li>遇到不懂的地方可以暂停视频，向AI助手提问</li>
+                    <li>支持调整播放速度（右键视频播放器）</li>
+                </ul>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-video"></i>
+                <h2>欢迎使用视频学习</h2>
+                <p style="color: #959da5;">请从左侧目录选择要观看的视频</p>
+                <a href="{{ url_for('study') }}" class="btn btn-primary mt-3">
+                    <i class="fas fa-arrow-left"></i> 返回学习主页
+                </a>
+            </div>
+        {% endif %}
     </div>
 </div>
 
-<div class="card">
-    <h2 class="card-title mb-3">视频列表</h2>
-    {% if videos %}
-        <div class="card-grid">
-            {% for video in videos %}
-            <div class="card feature-card" style="min-height: auto;">
-                <h3 class="card-title" style="font-size: 1.1rem;">{{ video }}</h3>
-                <video style="width: 100%; border-radius: 8px; margin-top: 0.5rem;" controls preload="metadata">
-                    <source src="{{ url_for('static', filename='videos/' ~ video) }}">
-                    您的浏览器不支持视频播放。
-                </video>
-                <div class="mt-2 text-muted" style="font-size: 0.9rem;">
-                    本地文件：{{ video }}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <p class="text-muted">暂无视频文件，请将 mp4/webm/mov 等视频放入 <code>static/videos</code> 目录。</p>
-    {% endif %}
-</div>
 {% endblock %}
-

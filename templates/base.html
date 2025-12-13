@@ -93,7 +93,459 @@
                 opacity: 0.4;
             }
         }
+        
+        /* 音乐播放器样式 */
+        .music-player-toggle-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .music-player-toggle-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .music-player-toggle-btn.playing {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            }
+            50% {
+                box-shadow: 0 4px 25px rgba(102, 126, 234, 0.8);
+            }
+        }
+        
+        .music-player-panel {
+            position: fixed;
+            right: -400px;
+            top: 70px;
+            width: 380px;
+            max-height: calc(100vh - 100px);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 247, 255, 0.95) 100%);
+            backdrop-filter: blur(10px);
+            border-radius: 15px 0 0 15px;
+            box-shadow: -5px 5px 30px rgba(0, 0, 0, 0.2);
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .music-player-panel.active {
+            right: 0;
+        }
+        
+        .music-player-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .music-player-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .music-player-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .music-player-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
+        }
+        
+        .music-player-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .now-playing {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 12px;
+        }
+        
+        .now-playing-cover {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        
+        .now-playing-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .now-playing-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .now-playing-artist {
+            color: #666;
+            font-size: 14px;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .music-progress-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .music-time {
+            font-size: 12px;
+            color: #666;
+            min-width: 40px;
+        }
+        
+        .music-progress-bar {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        .music-progress-bar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .music-progress-bar::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .music-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .music-control-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+        }
+        
+        .music-play-btn {
+            width: 55px;
+            height: 55px;
+            font-size: 20px;
+        }
+        
+        .music-control-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 15px rgba(102, 126, 234, 0.5);
+        }
+        
+        .music-control-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .music-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 10px;
+        }
+        
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+        
+        .music-option-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .music-option-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
+        }
+        
+        .music-option-btn.active {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 0 4px 10px rgba(245, 87, 108, 0.4);
+        }
+        
+        .volume-slider {
+            flex: 1;
+            height: 4px;
+            border-radius: 2px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+        }
+        
+        .volume-slider::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border: none;
+        }
+        
+        .volume-value {
+            font-size: 12px;
+            color: #666;
+            min-width: 40px;
+        }
+        
+        .playback-mode {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .music-playlist-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+        }
+        
+        .music-playlist-header h4 {
+            margin: 0;
+            font-size: 16px;
+            color: #333;
+        }
+        
+        .playlist-count {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .music-playlist {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .playlist-loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .playlist-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .playlist-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .playlist-item.active {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+            border-color: #667eea;
+        }
+        
+        .playlist-item-index {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        
+        .playlist-item.active .playlist-item-index {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .playlist-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .playlist-item-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .playlist-item-artist {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .playlist-item-icon {
+            color: #667eea;
+            font-size: 16px;
+        }
+        
+        .playlist-item.active .playlist-item-icon {
+            animation: spin 2s linear infinite;
+        }
+        
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .music-player-panel {
+                width: 100%;
+                right: -100%;
+                top: 60px;
+                border-radius: 15px 15px 0 0;
+            }
+            
+            .music-player-panel.active {
+                right: 0;
+            }
+        }
+        
+        /* 滚动条样式 */
+        .music-playlist::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .music-playlist::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border-radius: 3px;
+        }
+        
+        .music-playlist::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px;
+        }
+        
+        .music-player-body::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .music-player-body::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border-radius: 3px;
+        }
+        
+        .music-player-body::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px;
+        }
     </style>
+    
+    <!-- 额外的头部内容（用于子页面添加特定的脚本和样式） -->
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
     <!-- 视频背景（优先，电脑端显示） -->
@@ -159,24 +611,92 @@
         
         <!-- 用户操作 -->
         <div class="nav-right">
-            <!-- 背景音乐控制 -->
+            <!-- 音乐播放器控制按钮 -->
             <div class="music-control">
-                <button class="music-toggle-btn" id="musicToggle" title="背景音乐">
+                <button class="music-player-toggle-btn" id="musicPlayerToggle" title="音乐播放器">
                     <i class="fas fa-music"></i>
                 </button>
-                <div class="music-volume-control" id="musicVolumeControl">
-                    <input type="range" id="musicVolume" class="music-volume-slider" min="0" max="100" value="50" title="音量">
-                    <span class="music-volume-value" id="musicVolumeValue">50%</span>
-                </div>
             </div>
             <!-- 移除退出按钮，已移到错题练习页面下方 -->
         </div>
     </nav>
     
-    <!-- 背景音乐 -->
-    <audio id="backgroundMusic" loop>
-        <source src="{{ url_for('static', filename='music/background.mp3') }}" type="audio/mpeg">
-        <source src="{{ url_for('static', filename='music/background.ogg') }}" type="audio/ogg">
+    <!-- 音乐播放器面板 -->
+    <div class="music-player-panel" id="musicPlayerPanel">
+        <div class="music-player-header">
+            <h3><i class="fas fa-compact-disc"></i> 音乐播放器</h3>
+            <button class="music-player-close" id="musicPlayerClose">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="music-player-body">
+            <!-- 当前播放信息 -->
+            <div class="now-playing">
+                <div class="now-playing-cover">
+                    <i class="fas fa-music"></i>
+                </div>
+                <div class="now-playing-info">
+                    <div class="now-playing-title" id="nowPlayingTitle">未播放</div>
+                    <div class="now-playing-artist" id="nowPlayingArtist">-</div>
+                </div>
+            </div>
+            
+            <!-- 进度条 -->
+            <div class="music-progress-container">
+                <span class="music-time" id="currentTime">0:00</span>
+                <input type="range" class="music-progress-bar" id="musicProgressBar" min="0" max="100" value="0">
+                <span class="music-time" id="totalTime">0:00</span>
+            </div>
+            
+            <!-- 播放控制按钮 -->
+            <div class="music-controls">
+                <button class="music-control-btn" id="prevBtn" title="上一曲">
+                    <i class="fas fa-step-backward"></i>
+                </button>
+                <button class="music-control-btn music-play-btn" id="playPauseBtn" title="播放/暂停">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button class="music-control-btn" id="nextBtn" title="下一曲">
+                    <i class="fas fa-step-forward"></i>
+                </button>
+            </div>
+            
+            <!-- 音量和播放模式控制 -->
+            <div class="music-options">
+                <div class="volume-control">
+                    <button class="music-option-btn" id="volumeBtn">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="50">
+                    <span class="volume-value" id="volumeValue">50%</span>
+                </div>
+                
+                <div class="playback-mode">
+                    <button class="music-option-btn" id="shuffleBtn" title="随机播放">
+                        <i class="fas fa-random"></i>
+                    </button>
+                    <button class="music-option-btn" id="repeatBtn" title="循环模式">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 播放列表 -->
+            <div class="music-playlist-header">
+                <h4><i class="fas fa-list"></i> 播放列表</h4>
+                <span class="playlist-count" id="playlistCount">0首歌曲</span>
+            </div>
+            <div class="music-playlist" id="musicPlaylist">
+                <div class="playlist-loading">
+                    <i class="fas fa-spinner fa-spin"></i> 加载中...
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 背景音乐Audio元素 -->
+    <audio id="backgroundMusic" preload="metadata">
         您的浏览器不支持音频播放。
     </audio>
     
@@ -356,16 +876,22 @@
                 }
             }
             
-            // Flash消息自动消失
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                setTimeout(() => {
-                    alert.style.opacity = '0';
-                    setTimeout(() => {
-                        alert.style.display = 'none';
-                    }, 500);
-                }, 5000);
-            });
+            // Flash消息自动消失（只针对Flash消息容器中的alert）
+            const flashContainer = document.querySelector('.container');
+            if (flashContainer) {
+                const flashAlerts = flashContainer.querySelectorAll('.alert');
+                flashAlerts.forEach(alert => {
+                    // 检查是否是Flash消息（在第一个container中且不在card内）
+                    if (!alert.closest('.card') && !alert.closest('#resultCard')) {
+                        setTimeout(() => {
+                            alert.style.opacity = '0';
+                            setTimeout(() => {
+                                alert.style.display = 'none';
+                            }, 500);
+                        }, 5000);
+                    }
+                });
+            }
             
             // 检测是否为移动设备，添加相应的类
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -432,119 +958,342 @@
                 });
             });
             
-            // 背景音乐控制（跨页面保持播放状态与进度）
-            const backgroundMusic = document.getElementById('backgroundMusic');
-            const musicToggle = document.getElementById('musicToggle');
-            const musicVolumeControl = document.getElementById('musicVolumeControl');
-            const musicVolume = document.getElementById('musicVolume');
-            const musicVolumeValue = document.getElementById('musicVolumeValue');
-            const MUSIC_TIME_KEY = 'musicCurrentTime';
-            const MUSIC_PLAYING_KEY = 'musicPlaying';
-            const MUSIC_VOLUME_KEY = 'musicVolume';
-            let lastSave = 0;
-            
-            // 从 localStorage 加载音乐设置
-            const savedMusicState = localStorage.getItem(MUSIC_PLAYING_KEY);
-            const savedVolume = localStorage.getItem(MUSIC_VOLUME_KEY);
-            const savedTime = parseFloat(localStorage.getItem(MUSIC_TIME_KEY) || '0');
-            
-            if (savedVolume !== null) {
-                backgroundMusic.volume = savedVolume / 100;
-                musicVolume.value = savedVolume;
-                musicVolumeValue.textContent = savedVolume + '%';
-            }
-            
-            // 页面加载后恢复进度（尽量缩短切页后的静音时间）
-            if (!isNaN(savedTime) && savedTime > 0) {
-                backgroundMusic.currentTime = savedTime;
-            }
-            
-            // 音乐播放/暂停切换
-            if (musicToggle) {
-                musicToggle.addEventListener('click', function() {
-                    if (backgroundMusic.paused) {
-                        backgroundMusic.play().catch(e => {
-                            console.log('音乐播放失败:', e);
-                        });
-                        musicToggle.classList.add('playing');
-                        musicToggle.querySelector('i').classList.remove('fa-music');
-                        musicToggle.querySelector('i').classList.add('fa-pause');
-                        localStorage.setItem(MUSIC_PLAYING_KEY, 'true');
-                    } else {
-                        backgroundMusic.pause();
-                        musicToggle.classList.remove('playing');
-                        musicToggle.querySelector('i').classList.remove('fa-pause');
-                        musicToggle.querySelector('i').classList.add('fa-music');
-                        localStorage.setItem(MUSIC_PLAYING_KEY, 'false');
-                        localStorage.setItem(MUSIC_TIME_KEY, String(backgroundMusic.currentTime));
-                    }
-                });
-
-                // 如果之前是播放状态，自动播放并恢复进度
-                if (savedMusicState === 'true') {
-                    backgroundMusic.play().then(() => {
-                        if (!isNaN(savedTime) && savedTime > 0) {
-                            backgroundMusic.currentTime = savedTime;
-                        }
-                    }).catch(e => {
-                        console.log('音乐自动播放失败:', e);
-                    });
-                    musicToggle.classList.add('playing');
-                    musicToggle.querySelector('i').classList.remove('fa-music');
-                    musicToggle.querySelector('i').classList.add('fa-pause');
+            // ========== 音乐播放器 ==========
+            class MusicPlayer {
+                constructor() {
+                    this.audio = document.getElementById('backgroundMusic');
+                    this.playlist = [];
+                    this.currentIndex = 0;
+                    this.isPlaying = false;
+                    this.isShuffleMode = false;
+                    this.repeatMode = 'list'; // 'list', 'one', 'none'
+                    this.savedPlaybackTime = 0;
+                    this.lastSavedTime = -1;
+                    
+                    this.initElements();
+                    this.loadSettings();
+                    this.loadPlaylist();
+                    this.bindEvents();
                 }
-            }
-            
-            // 音量控制
-            if (musicVolume) {
-                musicVolume.addEventListener('input', function() {
-                    const volume = this.value;
-                    backgroundMusic.volume = volume / 100;
-                    musicVolumeValue.textContent = volume + '%';
-                    localStorage.setItem(MUSIC_VOLUME_KEY, volume);
-                });
-            }
-            
-            // 鼠标悬停显示音量控制
-            if (musicToggle && musicVolumeControl) {
-                musicToggle.addEventListener('mouseenter', function() {
-                    musicVolumeControl.style.display = 'flex';
-                });
                 
-                musicVolumeControl.addEventListener('mouseleave', function() {
-                    musicVolumeControl.style.display = 'none';
-                });
-            }
-
-            // 音乐播放结束自动重新播放（loop属性应该处理，但作为备用）
-            backgroundMusic.addEventListener('ended', function() {
-                this.play();
-            });
-
-            // 定期保存播放进度，减少切页丢失
-            backgroundMusic.addEventListener('timeupdate', function() {
-                const now = Date.now();
-                if (now - lastSave > 2000) { // 每2秒保存一次
-                    localStorage.setItem(MUSIC_TIME_KEY, String(backgroundMusic.currentTime));
-                    lastSave = now;
+                initElements() {
+                    // 控制按钮
+                    this.playerToggleBtn = document.getElementById('musicPlayerToggle');
+                    this.playerPanel = document.getElementById('musicPlayerPanel');
+                    this.playerCloseBtn = document.getElementById('musicPlayerClose');
+                    this.playPauseBtn = document.getElementById('playPauseBtn');
+                    this.prevBtn = document.getElementById('prevBtn');
+                    this.nextBtn = document.getElementById('nextBtn');
+                    this.shuffleBtn = document.getElementById('shuffleBtn');
+                    this.repeatBtn = document.getElementById('repeatBtn');
+                    
+                    // 显示元素
+                    this.nowPlayingTitle = document.getElementById('nowPlayingTitle');
+                    this.nowPlayingArtist = document.getElementById('nowPlayingArtist');
+                    this.currentTimeEl = document.getElementById('currentTime');
+                    this.totalTimeEl = document.getElementById('totalTime');
+                    this.progressBar = document.getElementById('musicProgressBar');
+                    this.volumeSlider = document.getElementById('volumeSlider');
+                    this.volumeValue = document.getElementById('volumeValue');
+                    this.playlistEl = document.getElementById('musicPlaylist');
+                    this.playlistCount = document.getElementById('playlistCount');
                 }
-            });
-
-            // 播放/暂停时同步状态
-            backgroundMusic.addEventListener('pause', function() {
-                localStorage.setItem(MUSIC_PLAYING_KEY, 'false');
-                localStorage.setItem(MUSIC_TIME_KEY, String(backgroundMusic.currentTime));
-            });
-
-            backgroundMusic.addEventListener('play', function() {
-                localStorage.setItem(MUSIC_PLAYING_KEY, 'true');
-            });
-
-            // 页面卸载前保存进度和状态
-            window.addEventListener('beforeunload', () => {
-                localStorage.setItem(MUSIC_TIME_KEY, String(backgroundMusic.currentTime));
-                localStorage.setItem(MUSIC_PLAYING_KEY, backgroundMusic.paused ? 'false' : 'true');
-            });
+                
+                loadSettings() {
+                    // 加载音量设置
+                    const savedVolume = localStorage.getItem('musicVolume') || '50';
+                    this.audio.volume = savedVolume / 100;
+                    this.volumeSlider.value = savedVolume;
+                    this.volumeValue.textContent = savedVolume + '%';
+                    
+                    // 加载播放模式
+                    this.isShuffleMode = localStorage.getItem('musicShuffle') === 'true';
+                    this.repeatMode = localStorage.getItem('musicRepeat') || 'list';
+                    
+                    if (this.isShuffleMode) {
+                        this.shuffleBtn.classList.add('active');
+                    }
+                    
+                    this.updateRepeatButton();
+                    
+                    // 加载上次播放的歌曲索引
+                    const savedIndex = localStorage.getItem('musicCurrentIndex');
+                    if (savedIndex !== null) {
+                        this.currentIndex = parseInt(savedIndex);
+                    }
+                    
+                    // 加载上次播放位置
+                    this.savedPlaybackTime = parseFloat(localStorage.getItem('musicPlaybackTime')) || 0;
+                }
+                
+                async loadPlaylist() {
+                    try {
+                        const response = await fetch('/api/music/list');
+                        this.playlist = await response.json();
+                        
+                        if (this.playlist.length > 0) {
+                            this.renderPlaylist();
+                            this.playlistCount.textContent = `${this.playlist.length}首歌曲`;
+                            
+                            // 加载上次播放的歌曲
+                            if (this.currentIndex >= this.playlist.length) {
+                                this.currentIndex = 0;
+                            }
+                            this.loadTrack(this.currentIndex);
+                            
+                            // 如果之前在播放，自动恢复播放
+                            const wasPlaying = localStorage.getItem('musicPlaying') === 'true';
+                            if (wasPlaying) {
+                                // 等待音频元数据加载完成后恢复播放位置
+                                this.audio.addEventListener('loadedmetadata', () => {
+                                    if (this.savedPlaybackTime > 0 && this.savedPlaybackTime < this.audio.duration) {
+                                        this.audio.currentTime = this.savedPlaybackTime;
+                                    }
+                                    this.play();
+                                }, { once: true });
+                            } else if (this.savedPlaybackTime > 0) {
+                                // 即使没有播放，也恢复到上次的位置
+                                this.audio.addEventListener('loadedmetadata', () => {
+                                    if (this.savedPlaybackTime < this.audio.duration) {
+                                        this.audio.currentTime = this.savedPlaybackTime;
+                                    }
+                                }, { once: true });
+                            }
+                        } else {
+                            this.playlistEl.innerHTML = '<div class="playlist-loading">暂无音乐文件</div>';
+                        }
+                    } catch (error) {
+                        console.error('加载音乐列表失败:', error);
+                        this.playlistEl.innerHTML = '<div class="playlist-loading">加载失败</div>';
+                    }
+                }
+                
+                renderPlaylist() {
+                    this.playlistEl.innerHTML = '';
+                    this.playlist.forEach((track, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'playlist-item';
+                        if (index === this.currentIndex) {
+                            item.classList.add('active');
+                        }
+                        
+                        item.innerHTML = `
+                            <div class="playlist-item-index">${index + 1}</div>
+                            <div class="playlist-item-info">
+                                <div class="playlist-item-title">${track.title}</div>
+                                <div class="playlist-item-artist">${track.artist}</div>
+                            </div>
+                            <i class="fas fa-music playlist-item-icon"></i>
+                        `;
+                        
+                        item.addEventListener('click', () => {
+                            this.loadTrack(index);
+                            this.play();
+                        });
+                        
+                        this.playlistEl.appendChild(item);
+                    });
+                }
+                
+                loadTrack(index, resetTime = true) {
+                    if (index < 0 || index >= this.playlist.length) return;
+                    
+                    this.currentIndex = index;
+                    const track = this.playlist[index];
+                    
+                    this.audio.src = track.url;
+                    this.nowPlayingTitle.textContent = track.title;
+                    this.nowPlayingArtist.textContent = track.artist;
+                    
+                    // 更新播放列表UI
+                    document.querySelectorAll('.playlist-item').forEach((item, idx) => {
+                        if (idx === index) {
+                            item.classList.add('active');
+                        } else {
+                            item.classList.remove('active');
+                        }
+                    });
+                    
+                    // 保存当前索引
+                    localStorage.setItem('musicCurrentIndex', index);
+                    
+                    // 如果切换了新歌曲，重置播放时间
+                    if (resetTime) {
+                        localStorage.setItem('musicPlaybackTime', '0');
+                    }
+                }
+                
+                play() {
+                    this.audio.play().then(() => {
+                        this.isPlaying = true;
+                        this.playPauseBtn.querySelector('i').classList.remove('fa-play');
+                        this.playPauseBtn.querySelector('i').classList.add('fa-pause');
+                        this.playerToggleBtn.classList.add('playing');
+                        localStorage.setItem('musicPlaying', 'true');
+                    }).catch(e => {
+                        console.log('播放失败:', e);
+                    });
+                }
+                
+                pause() {
+                    this.audio.pause();
+                    this.isPlaying = false;
+                    this.playPauseBtn.querySelector('i').classList.remove('fa-pause');
+                    this.playPauseBtn.querySelector('i').classList.add('fa-play');
+                    this.playerToggleBtn.classList.remove('playing');
+                    localStorage.setItem('musicPlaying', 'false');
+                }
+                
+                togglePlay() {
+                    if (this.isPlaying) {
+                        this.pause();
+                    } else {
+                        this.play();
+                    }
+                }
+                
+                playNext() {
+                    if (this.isShuffleMode) {
+                        this.currentIndex = Math.floor(Math.random() * this.playlist.length);
+                    } else {
+                        this.currentIndex = (this.currentIndex + 1) % this.playlist.length;
+                    }
+                    this.loadTrack(this.currentIndex);
+                    this.play();
+                }
+                
+                playPrev() {
+                    this.currentIndex = (this.currentIndex - 1 + this.playlist.length) % this.playlist.length;
+                    this.loadTrack(this.currentIndex);
+                    this.play();
+                }
+                
+                toggleShuffle() {
+                    this.isShuffleMode = !this.isShuffleMode;
+                    this.shuffleBtn.classList.toggle('active');
+                    localStorage.setItem('musicShuffle', this.isShuffleMode);
+                }
+                
+                toggleRepeat() {
+                    const modes = ['list', 'one', 'none'];
+                    const currentModeIndex = modes.indexOf(this.repeatMode);
+                    this.repeatMode = modes[(currentModeIndex + 1) % modes.length];
+                    this.updateRepeatButton();
+                    localStorage.setItem('musicRepeat', this.repeatMode);
+                }
+                
+                updateRepeatButton() {
+                    const icon = this.repeatBtn.querySelector('i');
+                    icon.classList.remove('fa-redo', 'fa-redo-alt');
+                    this.repeatBtn.classList.remove('active');
+                    
+                    if (this.repeatMode === 'one') {
+                        icon.className = 'fas fa-redo';
+                        this.repeatBtn.classList.add('active');
+                        this.repeatBtn.title = '单曲循环';
+                    } else if (this.repeatMode === 'list') {
+                        icon.className = 'fas fa-redo';
+                        this.repeatBtn.title = '列表循环';
+                    } else {
+                        icon.className = 'fas fa-redo';
+                        this.repeatBtn.title = '不循环';
+                    }
+                }
+                
+                formatTime(seconds) {
+                    if (isNaN(seconds)) return '0:00';
+                    const mins = Math.floor(seconds / 60);
+                    const secs = Math.floor(seconds % 60);
+                    return `${mins}:${secs.toString().padStart(2, '0')}`;
+                }
+                
+                bindEvents() {
+                    // 面板切换
+                    this.playerToggleBtn.addEventListener('click', () => {
+                        this.playerPanel.classList.toggle('active');
+                    });
+                    
+                    this.playerCloseBtn.addEventListener('click', () => {
+                        this.playerPanel.classList.remove('active');
+                    });
+                    
+                    // 播放控制
+                    this.playPauseBtn.addEventListener('click', () => this.togglePlay());
+                    this.prevBtn.addEventListener('click', () => this.playPrev());
+                    this.nextBtn.addEventListener('click', () => this.playNext());
+                    this.shuffleBtn.addEventListener('click', () => this.toggleShuffle());
+                    this.repeatBtn.addEventListener('click', () => this.toggleRepeat());
+                    
+                    // 音量控制
+                    this.volumeSlider.addEventListener('input', (e) => {
+                        const volume = e.target.value;
+                        this.audio.volume = volume / 100;
+                        this.volumeValue.textContent = volume + '%';
+                        localStorage.setItem('musicVolume', volume);
+                    });
+                    
+                    // 进度条控制
+                    this.progressBar.addEventListener('input', (e) => {
+                        const seekTime = (e.target.value / 100) * this.audio.duration;
+                        this.audio.currentTime = seekTime;
+                    });
+                    
+                    // 音频事件
+                    this.audio.addEventListener('timeupdate', () => {
+                        if (this.audio.duration) {
+                            const progress = (this.audio.currentTime / this.audio.duration) * 100;
+                            this.progressBar.value = progress;
+                            this.currentTimeEl.textContent = this.formatTime(this.audio.currentTime);
+                            
+                            // 每秒保存一次播放位置
+                            if (this.isPlaying && Math.floor(this.audio.currentTime) !== this.lastSavedTime) {
+                                this.lastSavedTime = Math.floor(this.audio.currentTime);
+                                localStorage.setItem('musicPlaybackTime', this.audio.currentTime);
+                            }
+                        }
+                    });
+                    
+                    this.audio.addEventListener('loadedmetadata', () => {
+                        this.totalTimeEl.textContent = this.formatTime(this.audio.duration);
+                    });
+                    
+                    this.audio.addEventListener('ended', () => {
+                        // 清除当前歌曲的播放位置
+                        localStorage.setItem('musicPlaybackTime', '0');
+                        
+                        if (this.repeatMode === 'one') {
+                            this.audio.currentTime = 0;
+                            this.play();
+                        } else if (this.repeatMode === 'list') {
+                            this.playNext();
+                        } else {
+                            if (this.currentIndex < this.playlist.length - 1) {
+                                this.playNext();
+                            } else {
+                                this.pause();
+                            }
+                        }
+                    });
+                    
+                    // 页面卸载前保存状态
+                    window.addEventListener('beforeunload', () => {
+                        localStorage.setItem('musicPlaying', this.isPlaying ? 'true' : 'false');
+                        localStorage.setItem('musicCurrentIndex', this.currentIndex);
+                        localStorage.setItem('musicPlaybackTime', this.audio.currentTime || '0');
+                    });
+                    
+                    // 页面可见性变化时保存状态
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.hidden) {
+                            localStorage.setItem('musicPlaying', this.isPlaying ? 'true' : 'false');
+                            localStorage.setItem('musicPlaybackTime', this.audio.currentTime || '0');
+                        }
+                    });
+                }
+            }
+            
+            // 初始化音乐播放器
+            const musicPlayer = new MusicPlayer();
             
             // 检测并加载背景视频/图片
             const pageVideo = document.getElementById('pageBackgroundVideo');

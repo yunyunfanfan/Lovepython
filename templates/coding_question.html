@@ -38,12 +38,22 @@
                 </div>
                 {% endif %}
                 
+                {% if question.answer %}
                 <div class="alert alert-info">
                     <i class="fas fa-lightbulb"></i> 
-                    <strong>提示：</strong>编写 Python 代码，输出结果应与期望输出一致。
-                    {% if question.answer %}
-                    <br><strong>期望输出：</strong><code>{{ question.answer }}</code>
-                    {% endif %}
+                    <strong>测试用例：</strong>
+                    <pre class="mb-0 mt-2" style="background: white; padding: 10px; border-radius: 5px; border-left: 3px solid #2ec4b6;">{{ question.answer }}</pre>
+                </div>
+                {% endif %}
+                
+                <div class="alert alert-success">
+                    <i class="fas fa-info-circle"></i> 
+                    <strong>提示：</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>如果题目有输入要求，使用 <code>input()</code> 函数读取</li>
+                        <li>使用 <code>print()</code> 输出结果</li>
+                        <li>输出应与期望输出完全一致</li>
+                    </ul>
                 </div>
                 
                 {% if question.difficulty %}
@@ -69,8 +79,18 @@
                         class="form-control code-editor" 
                         rows="15" 
                         placeholder="# 在这里编写您的 Python 代码
-# 例如：
-print('Hello, Python!')"
+# 
+# 如果题目需要输入，请使用 input() 函数：
+# n = int(input())  # 读取整数
+# s = input()       # 读取字符串
+# 
+# 使用 print() 输出结果：
+# print(n * n)
+# 
+# 示例：计算两数之和
+# a = int(input())
+# b = int(input())
+# print(a + b)"
                         required>{{ user_code if user_code else '' }}</textarea>
                 </div>
                 
@@ -87,35 +107,43 @@ print('Hello, Python!')"
     </div>
 </div>
 
-{% if result %}
-<div class="card mb-4">
-    <h3 class="card-title">
-        <i class="fas fa-check-circle"></i> 执行结果
-    </h3>
+<!-- 执行结果区域 - 持久显示 -->
+<div class="card mb-4" id="resultCard" style="display: {% if result %}block{% else %}none{% endif %};">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="card-title mb-0">
+            <i class="fas fa-check-circle"></i> 执行结果
+        </h3>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearResult()">
+            <i class="fas fa-times"></i> 清除结果
+        </button>
+    </div>
     
-    {% if result.correct %}
-    <div class="alert alert-success">
-        <i class="fas fa-check-circle"></i> 
-        <strong>恭喜！代码运行正确！</strong>
-        <p class="mb-0 mt-2">执行时间：{{ "%.3f"|format(result.execution_time) }} 秒</p>
-        {% if result.output %}
-        <p class="mb-0 mt-2">输出：<code>{{ result.output }}</code></p>
+    <div id="resultContent">
+        {% if result %}
+            {% if result.correct %}
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i> 
+                <strong>恭喜！代码运行正确！</strong>
+                <p class="mb-0 mt-2">执行时间：{{ "%.3f"|format(result.execution_time) }} 秒</p>
+                {% if result.output %}
+                <p class="mb-0 mt-2">输出：<code>{{ result.output }}</code></p>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="alert alert-danger">
+                <i class="fas fa-times-circle"></i> 
+                <strong>代码运行有误</strong>
+                {% if result.error %}
+                <p class="mb-0 mt-2" style="white-space: pre-wrap;">{{ result.error }}</p>
+                {% endif %}
+                {% if result.output %}
+                <p class="mb-0 mt-2">实际输出：<code>{{ result.output }}</code></p>
+                {% endif %}
+            </div>
+            {% endif %}
         {% endif %}
     </div>
-    {% else %}
-    <div class="alert alert-danger">
-        <i class="fas fa-times-circle"></i> 
-        <strong>代码运行有误</strong>
-        {% if result.error %}
-        <p class="mb-0 mt-2">{{ result.error }}</p>
-        {% endif %}
-        {% if result.output %}
-        <p class="mb-0 mt-2">实际输出：<code>{{ result.output }}</code></p>
-        {% endif %}
-    </div>
-    {% endif %}
 </div>
-{% endif %}
 
 <style>
     .code-editor {
@@ -152,12 +180,48 @@ print('Hello, Python!')"
         }
     }
     
-    // 自动聚焦代码编辑器
+    // 清除执行结果
+    function clearResult() {
+        const resultCard = document.getElementById('resultCard');
+        if (resultCard) {
+            resultCard.style.display = 'none';
+        }
+    }
+    
+    // 表单提交处理 - 显示加载状态
     document.addEventListener('DOMContentLoaded', function() {
         const codeEditor = document.getElementById('code');
-        if (codeEditor) {
+        const codingForm = document.getElementById('codingForm');
+        
+        // 自动聚焦代码编辑器
+        if (codeEditor && !codeEditor.value) {
             codeEditor.focus();
         }
+        
+        // 表单提交时显示加载状态
+        if (codingForm) {
+            codingForm.addEventListener('submit', function(e) {
+                const submitButton = codingForm.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    const originalHTML = submitButton.innerHTML;
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 执行中...';
+                    
+                    // 不阻止表单提交，让其正常提交
+                    // 提交后页面会重新加载，按钮状态会自动恢复
+                }
+            });
+        }
+        
+        // 如果有结果，自动滚动到结果区域
+        {% if result %}
+        const resultCard = document.getElementById('resultCard');
+        if (resultCard) {
+            setTimeout(function() {
+                resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 300);
+        }
+        {% endif %}
     });
 </script>
 {% endblock %}

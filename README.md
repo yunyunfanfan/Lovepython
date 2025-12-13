@@ -91,8 +91,8 @@
 
 1. **克隆仓库**
    ```bash
-   git clone https://github.com/yunyunfanfan/EXAM-MASTER.git
-   cd EXAM-MASTER
+   git clone https://github.com/yunyunfanfan/Lovepython.git
+   cd Lovepython
    ```
 
 2. **安装依赖**
@@ -125,7 +125,7 @@
 ### Android端安装
 
 1. **直接下载APK**
-   - 访问项目首页或[Releases页面](https://github.com/yunyunfanfan/EXAM-MASTER/releases)
+   - 访问项目首页或[Releases页面](https://github.com/yunyunfanfan/Lovepython/releases)
    - 下载最新版本 APK 文件
    
 2. **安装说明**
