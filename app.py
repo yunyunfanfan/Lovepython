@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
-"""
-EXAM-MASTER - A Flask-based Online Quiz System
 
-This application provides a complete quiz system with features including:
-- User registration and authentication
-- Question management with import from CSV
-- Multiple quiz modes (random, sequential, timed, exam)
-- User progress tracking and statistics
-- Favorites, tags, and search functionality
-
-Author: ShayneChen (xinyu-c@outlook.com)
-License: MIT
-"""
 
 # Standard library imports
 import csv
@@ -34,7 +22,9 @@ from flask import (
     flash, 
     jsonify, 
     abort,
-    send_file
+    send_file,
+    Response,
+    stream_with_context
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -66,7 +56,7 @@ DOC_DIR = os.path.join(app.static_folder, 'docs')
 learning_system = LearningSystem()
 
 # Avatar upload configuration
-ALLOWED_AVATAR_EXTS = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
+ALLOWED_AVATAR_EXTS = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'}
 
 #############################
 # Database Helper Functions #
@@ -153,43 +143,117 @@ def init_db():
     # Load questions from CSV if the table is empty
     c.execute('SELECT COUNT(*) as cnt FROM questions')
     if c.fetchone()['cnt'] == 0:
-        load_questions_to_db(conn)
+        print("\n" + "="*60)
+        print("📚 数据库为空，开始从 CSV 加载题库...")
+        print("="*60)
+        result = load_questions_to_db(conn)
+        if result['success']:
+            print(f"✅ 题库加载成功! 共加载 {result['count']} 道题目")
+            print(f"📝 使用编码: {result['encoding_used']}")
+        else:
+            print("❌ 题库加载失败!")
+            for error in result['errors']:
+                print(f"   - {error}")
+        print("="*60 + "\n")
     
     conn.close()
 
 def load_questions_to_db(conn):
     """
     Load questions from a CSV file into the database.
+    Support multiple encodings and better error handling.
     
     Args:
         conn (sqlite3.Connection): The database connection
+        
+    Returns:
+        dict: Loading result with success status, count, and errors
     """
-    try:
-        with open('questions.csv', 'r', encoding='utf-8-sig') as f:
-            reader = csv.DictReader(f)
-            c = conn.cursor()
-            for row in reader:
-                options = {}
-                for opt in ['A', 'B', 'C', 'D', 'E']:
-                    if row.get(opt) and row[opt].strip():
-                        options[opt] = row[opt]
-                c.execute(
-                    "INSERT INTO questions (id, stem, answer, difficulty, qtype, category, options) VALUES (?,?,?,?,?,?,?)",
-                    (
-                        row["题号"],
-                        row["题干"],
-                        row["答案"],
-                        row["难度"],
-                        row["题型"],
-                        row.get("类别", "未分类"),
-                        json.dumps(options, ensure_ascii=False),
-                    ),
-                )
-            conn.commit()
-    except FileNotFoundError:
-        print("Warning: questions.csv file not found. No questions loaded.")
-    except Exception as e:
-        print(f"Error loading questions: {e}")
+    result = {
+        'success': False,
+        'count': 0,
+        'errors': [],
+        'encoding_used': None
+    }
+    
+    # Try multiple encodings
+    encodings = ['utf-8-sig', 'utf-8', 'gbk', 'gb2312', 'gb18030']
+    
+    for encoding in encodings:
+        try:
+            print(f"[题库加载] 尝试使用编码: {encoding}")
+            with open('questions.csv', 'r', encoding=encoding) as f:
+                reader = csv.DictReader(f)
+                c = conn.cursor()
+                
+                loaded_count = 0
+                error_count = 0
+                
+                for row_num, row in enumerate(reader, start=2):  # start=2 because row 1 is header
+                    try:
+                        # Check if required fields exist
+                        if not row.get("题号") or not row.get("题干"):
+                            print(f"[题库加载] 跳过第 {row_num} 行: 缺少必要字段")
+                            error_count += 1
+                            result['errors'].append(f"第{row_num}行: 缺少题号或题干")
+                            continue
+                        
+                        # Parse options
+                        options = {}
+                        for opt in ['A', 'B', 'C', 'D', 'E']:
+                            if row.get(opt) and row[opt].strip():
+                                options[opt] = row[opt].strip()
+                        
+                        # Insert into database
+                        c.execute(
+                            "INSERT OR REPLACE INTO questions (id, stem, answer, difficulty, qtype, category, options) VALUES (?,?,?,?,?,?,?)",
+                            (
+                                row["题号"].strip(),
+                                row["题干"].strip(),
+                                row["答案"].strip(),
+                                row.get("难度", "").strip(),
+                                row.get("题型", "").strip(),
+                                row.get("类别", "未分类").strip(),
+                                json.dumps(options, ensure_ascii=False),
+                            ),
+                        )
+                        loaded_count += 1
+                        
+                    except Exception as row_error:
+                        error_count += 1
+                        error_msg = f"第{row_num}行错误: {str(row_error)}"
+                        print(f"[题库加载] {error_msg}")
+                        result['errors'].append(error_msg)
+                        continue
+                
+                conn.commit()
+                
+                result['success'] = True
+                result['count'] = loaded_count
+                result['encoding_used'] = encoding
+                
+                print(f"[题库加载] ✅ 成功! 使用编码: {encoding}")
+                print(f"[题库加载] 📊 加载题目: {loaded_count} 条")
+                if error_count > 0:
+                    print(f"[题库加载] ⚠️  跳过错误: {error_count} 条")
+                
+                return result
+                
+        except UnicodeDecodeError:
+            print(f"[题库加载] ❌ 编码 {encoding} 失败，尝试下一个...")
+            continue
+        except FileNotFoundError:
+            result['errors'].append("未找到 questions.csv 文件")
+            print("[题库加载] ❌ 未找到 questions.csv 文件")
+            return result
+        except Exception as e:
+            print(f"[题库加载] ❌ 使用编码 {encoding} 时出错: {str(e)}")
+            continue
+    
+    # If all encodings failed
+    result['errors'].append("所有编码格式都无法读取文件")
+    print("[题库加载] ❌ 所有编码格式都失败了")
+    return result
 
 # Initialize the database
 init_db()
@@ -523,6 +587,97 @@ def profile():
 
     return render_template('profile.html', username=current_username, avatar_url=avatar_url)
 
+
+@app.route('/api/upload_avatar', methods=['POST'])
+@login_required
+def upload_avatar_api():
+    """API endpoint for instant avatar upload with immediate feedback."""
+    user_id = get_user_id()
+    
+    if 'avatar' not in request.files:
+        return jsonify({
+            'success': False,
+            'error': '没有上传文件'
+        }), 400
+    
+    avatar = request.files['avatar']
+    
+    if not avatar or not avatar.filename:
+        return jsonify({
+            'success': False,
+            'error': '没有选择文件'
+        }), 400
+    
+    # 直接从原始文件名获取扩展名（支持中文文件名）
+    original_filename = avatar.filename
+    _, ext = os.path.splitext(original_filename)
+    ext = ext.lower()
+    
+    # 打印调试信息
+    print(f"[头像上传] 用户ID: {user_id}")
+    print(f"[头像上传] 原始文件名: {original_filename}")
+    print(f"[头像上传] 扩展名: {ext}")
+    print(f"[头像上传] MIME类型: {avatar.content_type}")
+    
+    # 扩展支持的格式
+    allowed_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'}
+    
+    if ext not in allowed_extensions:
+        return jsonify({
+            'success': False,
+            'error': f'不支持的文件格式 {ext}，请上传 PNG, JPG, JPEG, GIF, WebP, BMP 或 SVG 格式的图片'
+        }), 400
+    
+    # 检查文件大小（限制5MB）
+    avatar.seek(0, 2)  # 移动到文件末尾
+    file_size = avatar.tell()
+    avatar.seek(0)  # 重置到开头
+    
+    if file_size > 5 * 1024 * 1024:  # 5MB
+        return jsonify({
+            'success': False,
+            'error': '文件过大，请上传小于5MB的图片'
+        }), 400
+    
+    try:
+        avatar_dir = os.path.join(app.static_folder, 'avatars')
+        os.makedirs(avatar_dir, exist_ok=True)
+        
+        # 保存新头像
+        save_path = os.path.join(avatar_dir, f"user_{user_id}{ext}")
+        
+        # 删除其他扩展的旧头像
+        for old_ext in allowed_extensions:
+            old_path = os.path.join(avatar_dir, f"user_{user_id}{old_ext}")
+            if old_path != save_path and os.path.exists(old_path):
+                try:
+                    os.remove(old_path)
+                except Exception as e:
+                    print(f"Warning: Could not remove old avatar: {e}")
+        
+        avatar.save(save_path)
+        
+        # 生成头像URL（添加时间戳防止缓存）
+        import time
+        timestamp = int(time.time())
+        avatar_url = url_for('static', filename=f"avatars/user_{user_id}{ext}") + f"?t={timestamp}"
+        
+        return jsonify({
+            'success': True,
+            'message': '头像上传成功！',
+            'avatar_url': avatar_url
+        })
+        
+    except Exception as e:
+        print(f"Error uploading avatar: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': f'上传失败: {str(e)}'
+        }), 500
+
+
 ##############################
 # Main Application Routes #
 ##############################
@@ -664,32 +819,97 @@ def study():
 @app.route('/study/video')
 @login_required
 def study_video():
-    """Video learning hub."""
-    videos = list_media_files(VIDEO_DIR, ['.mp4', '.webm', '.mov', '.m4v', '.ogg'])
-    return render_template('study_video.html', videos=videos)
+    """Video learning hub with sidebar navigation."""
+    # 获取所有视频
+    video_files = list_media_files(VIDEO_DIR, ['.mp4', '.webm', '.mov', '.m4v', '.ogg'])
+    
+    # 处理视频列表：去除扩展名，排序
+    videos_list = []
+    for video_file in sorted(video_files):
+        # 去除扩展名作为显示名称
+        import os
+        display_name = os.path.splitext(video_file)[0]
+        file_ext = os.path.splitext(video_file)[1]
+        videos_list.append({
+            'filename': video_file,  # 完整文件名
+            'display_name': display_name,  # 显示名称
+            'extension': file_ext  # 扩展名
+        })
+    
+    # 获取选中的视频
+    selected = request.args.get('video')  # 完整文件名
+    selected_display_name = None
+    
+    # 默认选择第一个视频
+    if not selected and videos_list:
+        selected = videos_list[0]['filename']
+    
+    if selected:
+        # 验证视频是否存在
+        if selected in video_files:
+            selected_display_name = os.path.splitext(selected)[0]
+        else:
+            flash("未找到该视频", "error")
+            selected = None
+            if videos_list:
+                selected = videos_list[0]['filename']
+                selected_display_name = videos_list[0]['display_name']
+    
+    return render_template(
+        'study_video.html',
+        videos=videos_list,
+        selected_video=selected,
+        selected_display_name=selected_display_name
+    )
 
 @app.route('/study/docs')
 @login_required
 def study_docs():
-    """Document learning hub."""
-    docs = list_media_files(DOC_DIR, ['.md'])
-    selected = request.args.get('doc')
+    """Document learning hub with sidebar navigation."""
+    # 获取所有文档
+    doc_files = list_media_files(DOC_DIR, ['.md'])
+    
+    # 处理文档列表：去除.md后缀，排序
+    docs_list = []
+    for doc_file in sorted(doc_files):
+        # 去除.md后缀作为显示名称
+        display_name = doc_file.replace('.md', '')
+        docs_list.append({
+            'filename': doc_file,  # 完整文件名（用于读取）
+            'display_name': display_name,  # 显示名称（不含.md）
+        })
+    
+    # 获取选中的文档
+    selected = request.args.get('doc')  # 这是完整文件名
     content = None
-
-    if selected and selected in docs:
-        try:
-            with open(os.path.join(DOC_DIR, selected), 'r', encoding='utf-8') as f:
-                content = f.read()
-        except Exception as e:
-            flash(f"无法读取文档: {e}", "error")
-            content = None
-    elif selected and selected not in docs:
-        flash("未找到该文档", "error")
+    selected_display_name = None
+    
+    # 默认选择第一个文档
+    if not selected and docs_list:
+        selected = docs_list[0]['filename']
+    
+    if selected:
+        # 验证文档是否存在
+        if selected in doc_files:
+            try:
+                doc_path = os.path.join(DOC_DIR, selected)
+                with open(doc_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                # 获取显示名称
+                selected_display_name = selected.replace('.md', '')
+            except Exception as e:
+                print(f"Error reading document: {e}")
+                flash(f"无法读取文档: {e}", "error")
+                content = "# 文档加载失败\n\n无法读取该文档，请稍后重试。"
+        else:
+            flash("未找到该文档", "error")
+            content = "# 404 - 文档未找到\n\n请从左侧目录选择其他文档。"
 
     return render_template(
         'study_docs.html',
-        docs=docs,
-        selected_doc=selected,
+        docs=docs_list,
+        selected_doc=selected,  # 完整文件名
+        selected_display_name=selected_display_name,  # 显示名称
         doc_content=content
     )
 
@@ -757,9 +977,11 @@ def coding_question(qid):
         correct = 1 if result['correct'] else 0
         conn = get_db()
         c = conn.cursor()
+        # Save to history with local timestamp
+        local_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         c.execute(
-            'INSERT INTO history (user_id, question_id, user_answer, correct) VALUES (?,?,?,?)',
-            (user_id, qid, user_code[:500], correct)  # 限制代码长度
+            'INSERT INTO history (user_id, question_id, user_answer, correct, timestamp) VALUES (?,?,?,?,?)',
+            (user_id, qid, user_code[:500], correct, local_time)  # 限制代码长度
         )
         conn.commit()
         conn.close()
@@ -800,9 +1022,9 @@ def execute_and_check_code(user_code, expected_output):
         'execution_time': 0
     }
     
-    # 安全检查：禁止危险操作
+    # 安全检查：禁止危险操作（注意：允许 input() 用于读取输入）
     dangerous_keywords = ['import os', 'import sys', '__import__', 'eval', 'exec', 
-                          'open(', 'file(', 'input(', 'raw_input', 'subprocess',
+                          'open(', 'file(', 'raw_input', 'subprocess',
                           'compile(', 'reload(', '__builtins__']
     
     code_lower = user_code.lower()
@@ -810,6 +1032,25 @@ def execute_and_check_code(user_code, expected_output):
         if keyword.lower() in code_lower:
             result['error'] = f'代码包含不允许的操作：{keyword}'
             return result
+    
+    # 解析测试用例格式，提取输入数据
+    input_data = ""
+    expected_clean = expected_output.strip()
+    
+    # 检查是否有测试用例格式（输入:xxx 输出:yyy）
+    if '输入:' in expected_clean or '输入：' in expected_clean:
+        lines = expected_clean.split('\n')
+        for line in lines:
+            line = line.strip()
+            if line.startswith('输入:') or line.startswith('输入：'):
+                input_str = line.split(':', 1)[1].strip() if ':' in line else line.split('：', 1)[1].strip()
+                # 如果输入是逗号分隔的，转换为换行分隔（适用于多次input()）
+                if ',' in input_str:
+                    input_data = input_str.replace(',', '\n')
+                else:
+                    input_data = input_str
+            elif line.startswith('输出:') or line.startswith('输出：'):
+                expected_clean = line.split(':', 1)[1].strip() if ':' in line else line.split('：', 1)[1].strip()
     
     try:
         # 创建临时文件
@@ -822,6 +1063,7 @@ def execute_and_check_code(user_code, expected_output):
             start_time = time.time()
             process = subprocess.run(
                 [sys.executable, temp_file],
+                input=input_data,  # 通过stdin传递输入数据
                 capture_output=True,
                 text=True,
                 timeout=5,  # 5秒超时
@@ -840,25 +1082,18 @@ def execute_and_check_code(user_code, expected_output):
                 result['error'] = error_msg
                 return result
             
-            # 判断输出是否正确
-            # 如果expected_output是测试用例格式（如：输入:1,2 输出:3），需要解析
-            expected = expected_output.strip()
-            if '输出:' in expected or '输出：' in expected:
-                # 提取期望输出
-                if '输出:' in expected:
-                    expected = expected.split('输出:')[1].strip()
-                else:
-                    expected = expected.split('输出：')[1].strip()
-            
             # 比较输出（去除首尾空白，支持多行）
             actual_output = result['output'].strip()
-            expected_output_clean = expected.strip()
+            expected_output_clean = expected_clean.strip()
             
             # 支持多行输出比较
             result['correct'] = (actual_output == expected_output_clean)
             
             if not result['correct']:
-                result['error'] = f"期望输出：\n{expected_output_clean}\n\n实际输出：\n{actual_output}"
+                if input_data:
+                    result['error'] = f"输入：{input_data}\n\n期望输出：{expected_output_clean}\n\n实际输出：{actual_output}"
+                else:
+                    result['error'] = f"期望输出：{expected_output_clean}\n\n实际输出：{actual_output}"
             
         finally:
             # 清理临时文件
@@ -874,111 +1109,202 @@ def execute_and_check_code(user_code, expected_output):
     
     return result
 
+@app.route('/api/ai/chat/stream', methods=['POST'])
+@login_required
+def ai_chat_stream():
+    """流式输出的AI聊天API - 支持多模态（GLM-4.6V-Flash）"""
+    try:
+        from zai import ZhipuAiClient
+        
+        data = request.get_json()
+        message = data.get('message', '').strip()
+        image_data = data.get('image', None)  # Base64编码的图片
+        video_url = data.get('video', None)   # 视频URL
+        file_url = data.get('file', None)     # 文件URL
+        show_thinking = data.get('show_thinking', True)  # 是否显示思维链
+        
+        if not message and not image_data and not video_url and not file_url:
+            return jsonify({
+                'success': False,
+                'error': '消息或媒体内容不能同时为空'
+            }), 400
+        
+        # 使用 GLM-4.6V-Flash 的 API Key
+        api_key = '579ccd599216407b89c97cced48e32a9.WauVziv1yguDqpeK'
+        client = ZhipuAiClient(api_key=api_key)
+        
+        # 构建消息内容（多模态）
+        content = []
+        
+        # 添加图片
+        if image_data:
+            # 如果是完整的data URL，提取base64部分
+            if image_data.startswith('data:image'):
+                image_data = image_data.split(',')[1]
+            content.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": image_data
+                }
+            })
+        
+        # 添加视频
+        if video_url:
+            content.append({
+                "type": "video_url",
+                "video_url": {
+                    "url": video_url
+                }
+            })
+        
+        # 添加文件
+        if file_url:
+            content.append({
+                "type": "file_url",
+                "file_url": {
+                    "url": file_url
+                }
+            })
+        
+        # 添加文本
+        content.append({
+            "type": "text",
+            "text": message or "请分析上面的内容"
+        })
+        
+        def generate():
+            """生成器函数，用于流式输出"""
+            try:
+                response = client.chat.completions.create(
+                    model="glm-4.6v-flash",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": content
+                        }
+                    ],
+                    thinking={
+                        "type": "enabled"  # 启用思维链
+                    },
+                    stream=True
+                )
+                
+                # 流式返回每个chunk
+                for chunk in response:
+                    # 推理过程（思维链）
+                    if show_thinking and chunk.choices[0].delta.reasoning_content:
+                        reasoning = chunk.choices[0].delta.reasoning_content
+                        yield f"data: {json.dumps({'reasoning': reasoning}, ensure_ascii=False)}\n\n"
+                    
+                    # 实际回复内容
+                    if chunk.choices[0].delta.content:
+                        content_piece = chunk.choices[0].delta.content
+                        yield f"data: {json.dumps({'content': content_piece}, ensure_ascii=False)}\n\n"
+                
+                # 发送结束标记
+                yield f"data: {json.dumps({'done': True})}\n\n"
+                
+            except Exception as e:
+                error_msg = f"流式输出错误: {str(e)}"
+                print(f"Stream error: {e}")
+                import traceback
+                traceback.print_exc()
+                yield f"data: {json.dumps({'error': error_msg}, ensure_ascii=False)}\n\n"
+        
+        return Response(
+            stream_with_context(generate()),
+            mimetype='text/event-stream',
+            headers={
+                'Cache-Control': 'no-cache',
+                'X-Accel-Buffering': 'no',
+                'Connection': 'keep-alive'
+            }
+        )
+        
+    except Exception as e:
+        print(f"Error in ai_chat_stream: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @app.route('/api/ai/chat', methods=['POST'])
 @login_required
 def ai_chat():
-    """API endpoint for AI chat."""
+    """非流式的AI聊天API - 支持多模态（GLM-4.6V-Flash）"""
     try:
+        from zai import ZhipuAiClient
+        
         data = request.get_json()
         message = data.get('message', '').strip()
+        image_data = data.get('image', None)
+        video_url = data.get('video', None)
+        file_url = data.get('file', None)
         
-        if not message:
+        if not message and not image_data and not video_url and not file_url:
             return jsonify({
                 'success': False,
-                'error': '消息不能为空'
+                'error': '消息或媒体内容不能同时为空'
             }), 400
         
-        # 智谱AI (BigModel) API Key
-        # 优先从环境变量获取，否则使用默认值
-        api_key = os.environ.get('AI_API_KEY', 'a071b0cb84ce4f8a9057f78aa6e40f6c.tPmpuASAkobJJ7WV')
+        api_key = '579ccd599216407b89c97cced48e32a9.WauVziv1yguDqpeK'
+        client = ZhipuAiClient(api_key=api_key)
         
-        import requests
+        # 构建消息内容
+        content = []
         
-        # 智谱AI API 配置（根据官方文档）
-        # API端点：https://open.bigmodel.cn/api/paas/v4/chat/completions
-        api_url = 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
-        headers = {
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json'
-        }
+        if image_data:
+            if image_data.startswith('data:image'):
+                image_data = image_data.split(',')[1]
+            content.append({
+                "type": "image_url",
+                "image_url": {"url": image_data}
+            })
         
-        # 构建提示词，专注于 Python 学习
-        system_prompt = """你是一个专业的 Python 学习助手，擅长：
-1. 解释 Python 语法和概念
-2. 解答编程问题
-3. 提供学习建议和练习题目
-4. 帮助调试代码错误
-
-请用中文回答，语言简洁明了，适合初学者理解。"""
+        if video_url:
+            content.append({
+                "type": "video_url",
+                "video_url": {"url": video_url}
+            })
         
-        # 智谱AI API 请求格式（根据官方文档）
-        # 免费模型列表（按优先级排序）
-        free_models = ['glm-4-flash', 'glm-4', 'chatglm3-6b']
+        if file_url:
+            content.append({
+                "type": "file_url",
+                "file_url": {"url": file_url}
+            })
         
-        # 尝试每个模型，直到成功
-        last_error = None
-        for model_name in free_models:
-            payload = {
-                'model': model_name,
-                'messages': [
-                    {'role': 'system', 'content': system_prompt},
-                    {'role': 'user', 'content': message}
-                ],
-                'temperature': 1.0,  # 根据官方文档示例
-                'max_tokens': 2048
+        content.append({
+            "type": "text",
+            "text": message or "请分析上面的内容"
+        })
+        
+        response = client.chat.completions.create(
+            model="glm-4.6v-flash",
+            messages=[
+                {
+                    "role": "user",
+                    "content": content
+                }
+            ],
+            thinking={
+                "type": "enabled"
             }
-            
-            # 调用智谱AI API
-            try:
-                response = requests.post(
-                    api_url,
-                    headers=headers,
-                    json=payload,
-                    timeout=30
-                )
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    # 智谱AI 响应格式与 OpenAI 兼容
-                    if 'choices' in result and len(result['choices']) > 0:
-                        ai_response = result['choices'][0]['message']['content']
-                        return jsonify({
-                            'success': True,
-                            'response': ai_response,
-                            'model_used': model_name  # 返回使用的模型名称
-                        })
-                    else:
-                        last_error = 'AI 返回格式异常'
-                        continue  # 尝试下一个模型
-                else:
-                    # 记录错误，尝试下一个模型
-                    error_detail = response.text
-                    try:
-                        error_json = response.json()
-                        error_detail = error_json.get('error', {}).get('message', error_detail)
-                    except:
-                        pass
-                    last_error = f'模型 {model_name} 调用失败: {error_detail}'
-                    # 如果是模型不存在错误，继续尝试下一个
-                    if response.status_code == 400 and '模型' in error_detail:
-                        continue
-                    # 其他错误也继续尝试
-                    continue
-                    
-            except requests.exceptions.Timeout:
-                last_error = f'模型 {model_name} 响应超时'
-                continue  # 尝试下一个模型
-            except requests.exceptions.RequestException as e:
-                last_error = f'模型 {model_name} 网络错误: {str(e)}'
-                continue  # 尝试下一个模型
+        )
         
-        # 所有模型都失败了
+        # 获取回复内容
+        ai_response = response.choices[0].message.content
+        reasoning = getattr(response.choices[0].message, 'reasoning_content', None)
+        
         return jsonify({
-            'success': False,
-            'error': '所有免费模型都不可用',
-            'detail': last_error or '请检查 API key 和网络连接'
-        }), 500
-            
+            'success': True,
+            'response': ai_response,
+            'reasoning': reasoning,  # 思维链内容
+            'model_used': 'glm-4.6v-flash'
+        })
+        
     except Exception as e:
         print(f"Error in ai_chat: {e}")
         import traceback
@@ -1007,6 +1333,78 @@ def reset_history():
         flash(f"重置历史时出错: {str(e)}", "error")
         
     return redirect(url_for('random_question'))
+
+@app.route('/reload_questions', methods=['POST'])
+@login_required
+def reload_questions():
+    """
+    Route to reload questions from CSV file into database.
+    This preserves user data and only updates question data.
+    """
+    user_id = get_user_id()
+    
+    # Optional: Add admin check here if needed
+    # For now, any logged-in user can reload
+    
+    try:
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get current question count
+        c.execute('SELECT COUNT(*) as cnt FROM questions')
+        old_count = c.fetchone()['cnt']
+        
+        print("\n" + "="*60)
+        print("🔄 开始重新加载题库...")
+        print(f"📊 当前题目数: {old_count}")
+        print("="*60)
+        
+        # Clear existing questions
+        c.execute('DELETE FROM questions')
+        conn.commit()
+        
+        # Reload from CSV
+        result = load_questions_to_db(conn)
+        
+        if result['success']:
+            # Get new count
+            c.execute('SELECT COUNT(*) as cnt FROM questions')
+            new_count = c.fetchone()['cnt']
+            
+            flash(f"✅ 题库重新加载成功！原题目数：{old_count}，新题目数：{new_count}", "success")
+            print(f"✅ 题库重新加载成功! 原: {old_count} → 新: {new_count}")
+            
+            # Show encoding used
+            if result['encoding_used']:
+                flash(f"📝 使用编码格式: {result['encoding_used']}", "info")
+            
+            # Show warnings if any
+            if result['errors']:
+                warning_msg = f"⚠️ 有 {len(result['errors'])} 个错误被跳过"
+                flash(warning_msg, "warning")
+                for error in result['errors'][:5]:  # Show first 5 errors
+                    print(f"   ⚠️  {error}")
+        else:
+            flash(f"❌ 题库加载失败！请检查 questions.csv 文件格式", "error")
+            for error in result['errors']:
+                flash(error, "error")
+                print(f"   ❌ {error}")
+            
+            # Try to restore by reloading again (in case file was partially loaded)
+            print("尝试恢复...")
+            
+        print("="*60 + "\n")
+        conn.close()
+        
+    except FileNotFoundError:
+        flash("❌ 未找到 questions.csv 文件！", "error")
+    except Exception as e:
+        flash(f"❌ 重新加载题库时出错: {str(e)}", "error")
+        print(f"❌ 错误详情: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    return redirect(url_for('index'))
 
 ##############################
 # Question Routes #
@@ -1065,10 +1463,12 @@ def show_question(qid):
         user_answer_str = "".join(sorted(user_answer))
         correct = int(user_answer_str == "".join(sorted(q['answer'])))
 
-        # Save answer to history
+        # Save answer to history with local timestamp
+        from datetime import datetime
+        local_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         c.execute(
-            'INSERT INTO history (user_id, question_id, user_answer, correct) VALUES (?,?,?,?)',
-            (user_id, qid, user_answer_str, correct)
+            'INSERT INTO history (user_id, question_id, user_answer, correct, timestamp) VALUES (?,?,?,?,?)',
+            (user_id, qid, user_answer_str, correct, local_time)
         )
         conn.commit()
 
@@ -1087,6 +1487,7 @@ def show_question(qid):
         return render_template('question.html',
                               question=q,
                               result_msg=result_msg,
+                              user_answer=user_answer,
                               answered=answered,
                               total=total,
                               is_favorite=is_fav)
@@ -1113,7 +1514,7 @@ def show_history():
     user_id = get_user_id()
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT * FROM history WHERE user_id=? ORDER BY timestamp DESC', (user_id,))
+    c.execute('SELECT * FROM history WHERE user_id=? ORDER BY id DESC', (user_id,))
     rows = c.fetchall()
     conn.close()
     
@@ -1121,13 +1522,19 @@ def show_history():
     for r in rows:
         q = fetch_question(r['question_id'])
         stem = q['stem'] if q else '题目已删除'
+        
+        # 格式化时间戳 - 提取前19个字符 (YYYY-MM-DD HH:MM:SS)
+        timestamp_str = r['timestamp']
+        if timestamp_str and len(timestamp_str) > 19:
+            timestamp_str = timestamp_str[:19]
+        
         history_data.append({
             'id': r['id'],
             'question_id': r['question_id'],
             'stem': stem,
             'user_answer': r['user_answer'],
             'correct': r['correct'],
-            'timestamp': r['timestamp']
+            'timestamp': timestamp_str
         })
     
     return render_template('history.html', history=history_data)
@@ -1522,6 +1929,7 @@ def show_sequential_question(qid):
     next_qid = None
     result_msg = None
     user_answer_str = ""
+    user_answer_list = []
     
     conn = get_db()
     c = conn.cursor()
@@ -1532,14 +1940,15 @@ def show_sequential_question(qid):
     
     # Handle POST request (user submitted an answer)
     if request.method == 'POST':
-        user_answer = request.form.getlist('answer')
-        user_answer_str = "".join(sorted(user_answer))
+        user_answer_list = request.form.getlist('answer')
+        user_answer_str = "".join(sorted(user_answer_list))
         correct = int(user_answer_str == "".join(sorted(q['answer'])))
         
-        # Save answer to history
-        c.execute('INSERT INTO history (user_id, question_id, user_answer, correct) '
-                  'VALUES (?,?,?,?)',
-                  (user_id, qid, user_answer_str, correct))
+        # Save answer to history with local timestamp
+        local_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        c.execute('INSERT INTO history (user_id, question_id, user_answer, correct, timestamp) '
+                  'VALUES (?,?,?,?,?)',
+                  (user_id, qid, user_answer_str, correct, local_time))
         
         # Find next unanswered question with higher ID
         c.execute('''
@@ -1611,7 +2020,7 @@ def show_sequential_question(qid):
                           result_msg=result_msg,
                           next_qid=next_qid,
                           sequential_mode=True,
-                          user_answer=user_answer_str,
+                          user_answer=user_answer_list,
                           answered=answered,
                           total=total,
                           is_favorite=is_fav)
@@ -1734,9 +2143,10 @@ def submit_timed_mode():
         if correct:
             correct_count += 1
             
-        # Save to history
-        c.execute('INSERT INTO history (user_id, question_id, user_answer, correct) VALUES (?,?,?,?)',
-                  (user_id, qid, user_answer_str, correct))
+        # Save to history with local timestamp
+        local_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        c.execute('INSERT INTO history (user_id, question_id, user_answer, correct, timestamp) VALUES (?,?,?,?,?)',
+                  (user_id, qid, user_answer_str, correct, local_time))
     
     # Mark session as completed and save score
     score = (correct_count / total * 100) if total > 0 else 0
@@ -1857,9 +2267,10 @@ def submit_exam():
         if correct:
             correct_count += 1
             
-        # Save to history
-        c.execute('INSERT INTO history (user_id, question_id, user_answer, correct) VALUES (?,?,?,?)',
-                  (user_id, qid, user_answer_str, correct))
+        # Save to history with local timestamp
+        local_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        c.execute('INSERT INTO history (user_id, question_id, user_answer, correct, timestamp) VALUES (?,?,?,?,?)',
+                  (user_id, qid, user_answer_str, correct, local_time))
         
         # Add to results
         question_results.append({
@@ -2021,8 +2432,14 @@ def get_recommendations():
     """API endpoint to get question recommendations."""
     user_id = get_user_id()
     count = request.args.get('count', 10, type=int)
+    refresh = request.args.get('refresh', None)  # 刷新参数
     
     try:
+        # 如果有刷新参数，清除推荐缓存
+        if refresh:
+            cache_key = f"recommendations_{user_id}"
+            learning_system.cache_manager.delete(cache_key)
+        
         recommendations = learning_system.get_recommendations(user_id, count)
         return jsonify({
             'success': True,
@@ -2145,6 +2562,48 @@ def download_apk(filename):
     except Exception as e:
         print(f"Error in download_apk: {e}")
         abort(404)
+
+##############################
+# Music Player API #
+##############################
+
+@app.route('/api/music/list')
+def get_music_list():
+    """
+    Get list of available music files from static/music directory.
+    Returns JSON array of music file information.
+    """
+    try:
+        music_dir = os.path.join(app.static_folder, 'music')
+        music_files = []
+        
+        if os.path.exists(music_dir):
+            for filename in os.listdir(music_dir):
+                # Only include audio files (mp3, ogg, wav, m4a)
+                if filename.lower().endswith(('.mp3', '.ogg', '.wav', '.m4a', '.flac')):
+                    # Extract artist and title from filename (format: "Artist - Title.mp3")
+                    name = os.path.splitext(filename)[0]
+                    if ' - ' in name:
+                        parts = name.split(' - ', 1)
+                        artist = parts[0].strip()
+                        title = parts[1].strip()
+                    else:
+                        artist = "未知艺术家"
+                        title = name
+                    
+                    music_files.append({
+                        'filename': filename,
+                        'artist': artist,
+                        'title': title,
+                        'url': url_for('static', filename=f'music/{filename}')
+                    })
+        
+        # Sort by filename
+        music_files.sort(key=lambda x: x['filename'])
+        return jsonify(music_files)
+    except Exception as e:
+        print(f"Error getting music list: {e}")
+        return jsonify([])
 
 ##############################
 # Error Handlers #

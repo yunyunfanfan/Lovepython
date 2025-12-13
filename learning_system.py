@@ -766,6 +766,14 @@ class RecommendationEngine:
         # 按优先级和分数排序
         recommendations.sort()
         
+        # 如果推荐数量足够，从前面的高分题目中随机选择一些，增加多样性
+        if len(recommendations) > count * 2:
+            # 从排名靠前的题目中随机选择
+            import random
+            top_recommendations = recommendations[:count * 2]
+            random.shuffle(top_recommendations)
+            return top_recommendations[:count]
+        
         return recommendations[:count]
     
     def _calculate_recommendation_score(self, question: Question, 
@@ -782,32 +790,48 @@ class RecommendationEngine:
         Returns:
             推荐分数（0-100）
         """
-        # 基础分，保证未作答用户也有中性分值
-        score = 40.0
+        # 基础分，根据题目难度有所差异
+        difficulty_base = {
+            '简单': 35.0,
+            '中等': 45.0,
+            '困难': 50.0
+        }
+        score = difficulty_base.get(question.difficulty, 40.0)
 
         # 类目弱项权重（精准到类别）
         category_stats = stats.get('category_stats', {})
         if question.category in category_stats:
             acc = category_stats[question.category]['accuracy']
+            total = category_stats[question.category]['total']
             if acc < 60:
-                score += min(30, (60 - acc) * 0.5)  # 最高 +30
+                # 根据题目数量调整权重，答题越多权重越大
+                weight = min(1.0, total / 10.0)
+                score += min(30, (60 - acc) * 0.5 * (1 + weight))  # 最高 +30~60
 
         # 难度弱项权重
         difficulty_stats = stats.get('difficulty_stats', {})
         if question.difficulty in difficulty_stats:
             acc = difficulty_stats[question.difficulty]['accuracy']
+            total = difficulty_stats[question.difficulty]['total']
             if acc < 60:
-                score += min(24, (60 - acc) * 0.4)  # 最高 +24
+                weight = min(1.0, total / 15.0)
+                score += min(24, (60 - acc) * 0.4 * (1 + weight))  # 最高 +24~48
 
         # 题型弱项权重
         type_stats = stats.get('type_stats', {})
         if question.qtype in type_stats:
             acc = type_stats[question.qtype]['accuracy']
+            total = type_stats[question.qtype]['total']
             if acc < 70:
-                score += min(21, (70 - acc) * 0.3)  # 最高 +21
+                weight = min(1.0, total / 12.0)
+                score += min(21, (70 - acc) * 0.3 * (1 + weight))  # 最高 +21~42
 
-        # 少量探索分，避免长期同一排序
-        score += 5.0
+        # 基于题目ID的微小差异，使推荐度更分散
+        try:
+            id_num = int(''.join(filter(str.isdigit, str(question.id))) or '0')
+            score += (id_num % 10) * 0.3  # 0-2.7的微小差异
+        except:
+            pass
 
         # 去除随机性，数值稳定；并限制范围
         return round(min(100.0, max(0.0, score)), 1)

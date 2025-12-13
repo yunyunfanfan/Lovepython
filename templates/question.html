@@ -75,8 +75,9 @@
         <ul class="options-list">
             {% for opt_key, opt_val in question.options.items() %}
                 {% set checked = user_answer is defined and (opt_key in user_answer) %}
+                {% set is_correct_option = opt_key in question.answer %}
                 <li class="option-item">
-                    <label class="option-label {% if checked and result_msg %}{% if opt_key in question.answer %}option-correct{% else %}option-incorrect{% endif %}{% endif %}">
+                    <label class="option-label {% if result_msg %}{% if checked and is_correct_option %}option-correct{% elif checked and not is_correct_option %}option-incorrect{% elif not checked and is_correct_option %}option-correct-answer{% endif %}{% endif %}">
                         {% if question.type == '单选题' %}
                             <input type="radio" 
                                    class="option-checkbox" 
@@ -172,13 +173,29 @@
 
 <style>
     .option-label.option-correct {
-        background-color: rgba(46, 196, 182, 0.1);
+        background-color: rgba(46, 196, 182, 0.15);
         border-color: var(--success-color);
+        border-width: 2px;
     }
     
     .option-label.option-incorrect {
-        background-color: rgba(230, 57, 70, 0.1);
+        background-color: rgba(230, 57, 70, 0.15);
         border-color: var(--danger-color);
+        border-width: 2px;
+    }
+    
+    .option-label.option-correct-answer {
+        background-color: rgba(46, 196, 182, 0.08);
+        border-color: var(--success-color);
+        border-style: dashed;
+        border-width: 2px;
+    }
+    
+    .option-label.option-correct-answer::after {
+        content: ' ✓ 正确答案';
+        color: var(--success-color);
+        font-weight: 600;
+        margin-left: 10px;
     }
     
     .question-info {

@@ -35,6 +35,13 @@
                     <i class="fas fa-sign-out-alt"></i> 退出
                 </a>
             </div>
+            
+            <!-- 题库管理按钮 -->
+            <div class="admin-actions mt-3">
+                <button onclick="confirmReloadQuestions()" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-sync-alt"></i> 重新加载题库
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -590,12 +597,85 @@
     .question-meta {
         margin-top: 0.5rem;
     }
+    
+    /* 管理员操作按钮样式 */
+    .admin-actions {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--gray-200);
+    }
+    
+    .admin-actions .btn {
+        transition: all 0.3s ease;
+    }
+    
+    .admin-actions .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
 </style>
 
 <script>
     function refreshRecommendations() {
-        // 刷新页面以获取新的推荐
-        window.location.reload();
+        // 显示加载动画
+        const button = event.target.closest('button');
+        const originalHTML = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在刷新...';
+        
+        // 调用API获取新推荐（添加随机参数强制刷新）
+        fetch('/api/recommendations?count=5&refresh=' + Date.now())
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.recommendations && data.recommendations.length > 0) {
+                    // 重新加载页面以显示新推荐
+                    window.location.reload();
+                } else {
+                    alert('暂时没有新的推荐，请稍后再试');
+                    button.disabled = false;
+                    button.innerHTML = originalHTML;
+                }
+            })
+            .catch(error => {
+                console.error('刷新推荐失败:', error);
+                alert('刷新失败，请重试');
+                button.disabled = false;
+                button.innerHTML = originalHTML;
+            });
+    }
+    
+    function confirmReloadQuestions() {
+        // 确认对话框
+        const confirmed = confirm(
+            '⚠️ 确认重新加载题库？\n\n' +
+            '这将从 questions.csv 文件重新导入所有题目。\n' +
+            '✅ 用户数据和答题历史不会受影响\n' +
+            '📝 题目数据会被更新\n\n' +
+            '是否继续？'
+        );
+        
+        if (confirmed) {
+            // 创建并提交表单
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ url_for("reload_questions") }}';
+            
+            // 添加CSRF令牌（如果需要）
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrf_token';
+            csrfInput.value = '{{ csrf_token() if csrf_token }}';
+            form.appendChild(csrfInput);
+            
+            document.body.appendChild(form);
+            
+            // 显示加载提示
+            alert('⏳ 正在重新加载题库，请稍候...\n这可能需要几秒钟时间。');
+            
+            form.submit();
+        }
     }
 </script>
 {% endblock %}

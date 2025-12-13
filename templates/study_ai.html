@@ -2,6 +2,17 @@
 
 {% block title %}AI助学 - LovePython{% endblock %}
 
+{% block extra_head %}
+<!-- Markdown 渲染库 -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- 代码高亮库 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/python.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/javascript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/bash.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="hero-section mb-4">
     <div class="card">
@@ -23,14 +34,35 @@
             <div class="chat-message assistant">
                 <div class="avatar"><i class="fas fa-robot"></i></div>
                 <div class="bubble">
-                    你好，我是 AI 助学助手。可以向我提问 Python 知识、算法思路或练习辅导。
+                    你好，我是 AI 助学助手（GLM-4.6V-Flash）。我可以：<br>
+                    💬 解答 Python 知识和编程问题<br>
+                    🖼️ 分析代码截图和图表<br>
+                    📋 <strong>直接粘贴截图</strong>（Ctrl+V 或右键粘贴）<br>
+                    🧠 展示思维过程<br>
+                    ⚡ 实时流式回复<br>
+                    快来提问或粘贴截图吧！
                 </div>
             </div>
             <!-- 这里后续可动态追加聊天记录 -->
         </div>
         <div class="chat-input">
-            <textarea id="chatInput" rows="2" placeholder="请输入你的问题或要讲解的知识点..." onkeydown="handleKeyDown(event)"></textarea>
+            <!-- 图片预览区域 -->
+            <div id="imagePreview" style="display: none; align-items: center; gap: 10px; margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+                <img id="previewImg" style="max-width: 150px; max-height: 150px; border-radius: 6px; object-fit: cover;">
+                <button onclick="clearImage()" class="btn btn-sm btn-danger">
+                    <i class="fas fa-times"></i> 移除
+                </button>
+            </div>
+            
+            <textarea id="chatInput" rows="2" placeholder="请输入你的问题，或 Ctrl+V 粘贴截图..." onkeydown="handleKeyDown(event)" onpaste="handlePaste(event)"></textarea>
+            
             <div class="chat-actions">
+                <!-- 图片上传按钮 -->
+                <label for="imageUpload" class="btn btn-outline-secondary btn-sm" style="cursor: pointer;" title="上传图片">
+                    <i class="fas fa-image"></i> 图片
+                </label>
+                <input type="file" id="imageUpload" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+                
                 <button class="btn btn-primary" type="button" id="sendBtn" onclick="sendMessage()">
                     <i class="fas fa-paper-plane"></i> 发送
                 </button>
@@ -127,22 +159,379 @@
             max-height: 360px;
         }
     }
+    /* Markdown 渲染样式 */
     .chat-message .bubble pre {
-        background: #f5f5f5;
-        padding: 0.5rem;
-        border-radius: 4px;
+        background: #f6f8fa;
+        padding: 12px;
+        border-radius: 6px;
         overflow-x: auto;
-        margin: 0.5rem 0;
+        margin: 10px 0;
+        border: 1px solid #e1e4e8;
+    }
+    .chat-message .bubble pre code {
+        background: transparent;
+        padding: 0;
+        border-radius: 0;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 0.9em;
+        line-height: 1.5;
     }
     .chat-message .bubble code {
-        background: #f5f5f5;
-        padding: 0.2rem 0.4rem;
+        background: #f6f8fa;
+        padding: 2px 6px;
         border-radius: 3px;
-        font-family: 'Courier New', monospace;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 0.9em;
+        color: #e01e5a;
+    }
+    .chat-message .bubble h1,
+    .chat-message .bubble h2,
+    .chat-message .bubble h3,
+    .chat-message .bubble h4,
+    .chat-message .bubble h5,
+    .chat-message .bubble h6 {
+        margin-top: 16px;
+        margin-bottom: 8px;
+        font-weight: 600;
+        line-height: 1.25;
+    }
+    .chat-message .bubble h1 { font-size: 1.8em; border-bottom: 1px solid #eaecef; padding-bottom: 8px; }
+    .chat-message .bubble h2 { font-size: 1.5em; border-bottom: 1px solid #eaecef; padding-bottom: 6px; }
+    .chat-message .bubble h3 { font-size: 1.3em; }
+    .chat-message .bubble h4 { font-size: 1.1em; }
+    .chat-message .bubble h5 { font-size: 1em; }
+    .chat-message .bubble h6 { font-size: 0.9em; color: #6a737d; }
+    
+    .chat-message .bubble ul,
+    .chat-message .bubble ol {
+        padding-left: 24px;
+        margin: 8px 0;
+    }
+    .chat-message .bubble li {
+        margin: 4px 0;
+    }
+    .chat-message .bubble blockquote {
+        border-left: 4px solid #dfe2e5;
+        padding-left: 16px;
+        margin: 8px 0;
+        color: #6a737d;
+    }
+    .chat-message .bubble table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 12px 0;
+        overflow-x: auto;
+        display: block;
+    }
+    .chat-message .bubble table th,
+    .chat-message .bubble table td {
+        border: 1px solid #dfe2e5;
+        padding: 8px 12px;
+        text-align: left;
+    }
+    .chat-message .bubble table th {
+        background: #f6f8fa;
+        font-weight: 600;
+    }
+    .chat-message .bubble table tr:nth-child(even) {
+        background: #f6f8fa;
+    }
+    .chat-message .bubble a {
+        color: #0366d6;
+        text-decoration: none;
+    }
+    .chat-message .bubble a:hover {
+        text-decoration: underline;
+    }
+    .chat-message .bubble hr {
+        border: 0;
+        border-top: 1px solid #e1e4e8;
+        margin: 16px 0;
+    }
+    .chat-message .bubble img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 6px;
+        margin: 8px 0;
+    }
+    .chat-message .bubble p {
+        margin: 8px 0;
+        line-height: 1.6;
+    }
+    .chat-message .bubble strong {
+        font-weight: 600;
+    }
+    .chat-message .bubble em {
+        font-style: italic;
     }
 </style>
 
 <script>
+    // 配置 marked.js
+    marked.setOptions({
+        highlight: function(code, lang) {
+            if (lang && hljs.getLanguage(lang)) {
+                try {
+                    return hljs.highlight(code, { language: lang }).value;
+                } catch (err) {}
+            }
+            return hljs.highlightAuto(code).value;
+        },
+        breaks: true,
+        gfm: true
+    });
+    
+    // 存储原始内容以便实时渲染
+    let streamingContent = '';
+    
+    // 渲染 Markdown 内容的辅助函数
+    function renderMarkdown(element, content) {
+        try {
+            element.innerHTML = marked.parse(content);
+            // 高亮所有代码块
+            element.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightElement(block);
+            });
+        } catch (err) {
+            console.error('Markdown 渲染错误:', err);
+            element.textContent = content;
+        }
+    }
+    
+    let currentImage = null;
+    let currentVideo = null;
+    let currentFile = null;
+    
+    // 处理图片上传（通用函数）
+    function loadImageFile(file) {
+        // 检查文件类型
+        if (!file.type.startsWith('image/')) {
+            alert('请上传图片文件');
+            return;
+        }
+        
+        // 检查文件大小（建议小于10MB）
+        if (file.size > 10 * 1024 * 1024) {
+            alert('图片文件过大，请选择小于10MB的图片');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            currentImage = e.target.result;  // 包含data:image前缀的Base64
+            document.getElementById('previewImg').src = currentImage;
+            document.getElementById('imagePreview').style.display = 'flex';
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    // 处理文件选择器上传
+    function handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        loadImageFile(file);
+    }
+    
+    // 处理粘贴图片
+    function handlePaste(event) {
+        const items = event.clipboardData?.items;
+        if (!items) return;
+        
+        // 查找图片项
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.type.indexOf('image') !== -1) {
+                event.preventDefault(); // 阻止默认粘贴行为
+                const file = item.getAsFile();
+                if (file) {
+                    loadImageFile(file);
+                    // 显示提示
+                    const input = document.getElementById('chatInput');
+                    const placeholder = input.placeholder;
+                    input.placeholder = '✅ 图片已粘贴！现在可以输入问题或直接发送';
+                    setTimeout(() => {
+                        input.placeholder = placeholder;
+                    }, 2000);
+                }
+                break;
+            }
+        }
+    }
+    
+    // 清除图片
+    function clearImage() {
+        currentImage = null;
+        document.getElementById('imagePreview').style.display = 'none';
+        document.getElementById('imageUpload').value = '';
+    }
+    
+    // 流式发送消息
+    async function sendMessage() {
+        console.log('📤 准备发送消息...');
+        const input = document.getElementById('chatInput');
+        const message = input.value.trim();
+        
+        console.log('消息内容:', message);
+        console.log('是否有图片:', !!currentImage);
+        
+        if (!message && !currentImage && !currentVideo && !currentFile) {
+            console.warn('⚠️ 没有内容可发送');
+            alert('请输入问题或上传图片');
+            return;
+        }
+        
+        // 添加用户消息
+        let userMessage = '';
+        if (currentImage) {
+            userMessage += `<img src="${currentImage}" style="max-width: 300px; border-radius: 8px; margin-bottom: 8px;"><br>`;
+        }
+        if (currentVideo) {
+            userMessage += `<span class="badge bg-info">📹 视频</span><br>`;
+        }
+        if (currentFile) {
+            userMessage += `<span class="badge bg-secondary">📄 文件</span><br>`;
+        }
+        userMessage += message || '（请分析上面的内容）';
+        
+        addMessage(userMessage, true);
+        input.value = '';
+        
+        // 禁用发送按钮
+        const sendBtn = document.getElementById('sendBtn');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        sendBtn.disabled = true;
+        loadingIndicator.style.display = 'inline';
+        
+        // 创建AI消息气泡
+        const chatWindow = document.getElementById('chatWindow');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'chat-message assistant';
+        
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.innerHTML = '<i class="fas fa-robot"></i>';
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        
+        // 思维链容器（可折叠）
+        const thinkingDiv = document.createElement('div');
+        thinkingDiv.style.cssText = 'background: #f0f7ff; padding: 8px 12px; border-radius: 6px; margin-bottom: 8px; font-size: 0.9em; color: #666; display: none;';
+        thinkingDiv.innerHTML = '<strong>🤔 思考过程：</strong><span class="thinking-content"></span>';
+        
+        // 回复内容容器
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'response-content';
+        contentDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI正在思考...';
+        
+        bubble.appendChild(thinkingDiv);
+        bubble.appendChild(contentDiv);
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(bubble);
+        chatWindow.appendChild(messageDiv);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+        
+        // 重置流式内容
+        streamingContent = '';
+        
+        try {
+            // 构建请求数据
+            const requestData = {
+                message: message,
+                show_thinking: true
+            };
+            
+            if (currentImage) {
+                requestData.image = currentImage;
+            }
+            if (currentVideo) {
+                requestData.video = currentVideo;
+            }
+            if (currentFile) {
+                requestData.file = currentFile;
+            }
+            
+            // 使用流式API
+            const response = await fetch('/api/ai/chat/stream', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            if (!response.ok) {
+                throw new Error('网络响应失败');
+            }
+            
+            // 清空加载指示器
+            contentDiv.innerHTML = '';
+            
+            // 读取流式响应
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            
+            while (true) {
+                const {done, value} = await reader.read();
+                if (done) break;
+                
+                buffer += decoder.decode(value, {stream: true});
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.substring(6));
+                            
+                            if (data.error) {
+                                contentDiv.innerHTML = `<span style="color: red;">❌ 错误: ${data.error}</span>`;
+                            } else if (data.reasoning) {
+                                // 显示思维链
+                                thinkingDiv.style.display = 'block';
+                                const thinkingContent = thinkingDiv.querySelector('.thinking-content');
+                                thinkingContent.textContent += data.reasoning;
+                                chatWindow.scrollTop = chatWindow.scrollHeight;
+                            } else if (data.content) {
+                                // 累积内容
+                                streamingContent += data.content;
+                                // 实时渲染 Markdown
+                                renderMarkdown(contentDiv, streamingContent);
+                                chatWindow.scrollTop = chatWindow.scrollHeight;
+                            } else if (data.done) {
+                                console.log('✅ 流式输出完成');
+                            }
+                        } catch (e) {
+                            console.error('解析JSON错误:', e);
+                        }
+                    }
+                }
+            }
+            
+            // 最终渲染（确保完整渲染）
+            if (streamingContent) {
+                renderMarkdown(contentDiv, streamingContent);
+            }
+            
+        } catch (error) {
+            contentDiv.innerHTML = `<span style="color: red;">❌ 发送失败：${error.message || '网络错误'}</span><br>
+                <small style="color: #666;">请检查：<br>
+                1. 网络连接是否正常<br>
+                2. 后端服务是否启动<br>
+                3. 查看浏览器控制台了解详情（F12）</small>`;
+            console.error('发送消息错误:', error);
+            console.error('错误堆栈:', error.stack);
+        } finally {
+            sendBtn.disabled = false;
+            loadingIndicator.style.display = 'none';
+            clearImage();
+            currentVideo = null;
+            currentFile = null;
+            input.focus();
+        }
+    }
+    
     function addMessage(content, isUser) {
         const chatWindow = document.getElementById('chatWindow');
         const messageDiv = document.createElement('div');
@@ -154,79 +543,82 @@
         
         const bubble = document.createElement('div');
         bubble.className = 'bubble';
-        // 简单的 Markdown 渲染（换行和代码块）
-        bubble.innerHTML = content.replace(/\n/g, '<br>')
-            .replace(/```([\s\S]*?)```/g, '<pre>$1</pre>')
-            .replace(/`([^`]+)`/g, '<code>$1</code>');
+        bubble.innerHTML = content;
         
         messageDiv.appendChild(avatar);
         messageDiv.appendChild(bubble);
         chatWindow.appendChild(messageDiv);
         
-        // 滚动到底部
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
     
-    async function sendMessage() {
-        const input = document.getElementById('chatInput');
-        const message = input.value.trim();
-        
-        if (!message) {
-            return;
-        }
-        
-        // 添加用户消息
-        addMessage(message, true);
-        input.value = '';
-        
-        // 禁用发送按钮，显示加载指示器
-        const sendBtn = document.getElementById('sendBtn');
-        const loadingIndicator = document.getElementById('loadingIndicator');
-        sendBtn.disabled = true;
-        loadingIndicator.style.display = 'inline';
-        
-        try {
-            const response = await fetch('/api/ai/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ message: message })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                addMessage(data.response, false);
-            } else {
-                let errorMsg = '抱歉，发生了错误：' + (data.error || '未知错误');
-                if (data.detail) {
-                    errorMsg += '\n\n详细信息：' + data.detail;
-                }
-                addMessage(errorMsg, false);
-            }
-        } catch (error) {
-            addMessage('网络错误，请检查连接后重试。', false);
-            console.error('Error:', error);
-        } finally {
-            // 恢复发送按钮
-            sendBtn.disabled = false;
-            loadingIndicator.style.display = 'none';
-            input.focus();
-        }
-    }
-    
     function handleKeyDown(event) {
-        // Ctrl+Enter 或 Enter 发送消息
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
             sendMessage();
         }
     }
     
-    // 页面加载时聚焦输入框
+    // 处理拖拽上传
+    function handleDragOver(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = 'copy';
+        // 添加拖拽效果
+        const chatInput = document.getElementById('chatInput');
+        chatInput.style.borderColor = '#0366d6';
+        chatInput.style.backgroundColor = '#f0f7ff';
+    }
+    
+    function handleDragLeave(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        // 移除拖拽效果
+        const chatInput = document.getElementById('chatInput');
+        chatInput.style.borderColor = '';
+        chatInput.style.backgroundColor = '';
+    }
+    
+    function handleDrop(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // 移除拖拽效果
+        const chatInput = document.getElementById('chatInput');
+        chatInput.style.borderColor = '';
+        chatInput.style.backgroundColor = '';
+        
+        const files = event.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.type.startsWith('image/')) {
+                loadImageFile(file);
+                chatInput.placeholder = '✅ 图片已拖入！现在可以输入问题或直接发送';
+                setTimeout(() => {
+                    chatInput.placeholder = '请输入你的问题，或 Ctrl+V 粘贴截图...';
+                }, 2000);
+            } else {
+                alert('请拖入图片文件');
+            }
+        }
+    }
+    
     document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('chatInput').focus();
+        const chatInput = document.getElementById('chatInput');
+        chatInput.focus();
+        
+        // 添加拖拽事件监听
+        chatInput.addEventListener('dragover', handleDragOver);
+        chatInput.addEventListener('dragleave', handleDragLeave);
+        chatInput.addEventListener('drop', handleDrop);
+        
+        // 防止整个窗口的拖放
+        window.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        }, false);
+        window.addEventListener('drop', function(e) {
+            e.preventDefault();
+        }, false);
     });
 </script>
 {% endblock %}

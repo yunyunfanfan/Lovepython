@@ -2,64 +2,437 @@
 
 {% block title %}文档学习 - LovePython{% endblock %}
 
-{% block content %}
-<div class="hero-section mb-4">
-    <div class="card">
-        <div class="hero-content">
-            <h1 class="display-title mb-2"><i class="fas fa-file-alt"></i> 文档学习</h1>
-            <p class="lead mb-3">内置本地 Markdown 文档，在线阅读</p>
-            <a href="{{ url_for('study') }}" class="btn btn-outline-primary btn-sm">
-                <i class="fas fa-arrow-left"></i> 返回学习主页
-            </a>
-        </div>
-    </div>
-</div>
+{% block extra_head %}
+<!-- Markdown 渲染库 -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- 代码高亮库 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/python.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/javascript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/bash.min.js"></script>
+{% endblock %}
 
-<div class="card">
-    <h2 class="card-title mb-3">文档列表</h2>
-    {% if docs %}
-        <div class="card-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
-            {% for doc in docs %}
-            <div class="card feature-card" style="min-height: auto;">
-                <h3 class="card-title" style="font-size: 1.05rem;">{{ doc }}</h3>
-                <div class="mt-auto">
-                    <a href="{{ url_for('study_docs', doc=doc) }}" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-book-open"></i> 打开
-                    </a>
-                    <a href="{{ url_for('static', filename='docs/' ~ doc) }}" class="btn btn-sm btn-outline-secondary" download>
+{% block content %}
+<style>
+    /* 整体布局 */
+    .docs-container {
+        display: flex;
+        gap: 0;
+        min-height: calc(100vh - 200px);
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    /* 左侧边栏 */
+    .docs-sidebar {
+        width: 280px;
+        background: #f8f9fa;
+        border-right: 1px solid #e1e4e8;
+        overflow-y: auto;
+        overflow-x: hidden;
+        flex-shrink: 0;
+        max-height: calc(100vh - 100px);  /* 固定最大高度 */
+    }
+    
+    /* 滚动条样式 */
+    .docs-sidebar::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .docs-sidebar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    
+    .docs-sidebar::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+    
+    .docs-sidebar::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+    
+    .docs-sidebar-header {
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .docs-sidebar-header h2 {
+        margin: 0;
+        font-size: 1.3rem;
+        font-weight: 600;
+    }
+    
+    .docs-sidebar-header p {
+        margin: 5px 0 0 0;
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .docs-nav {
+        padding: 10px 0;
+    }
+    
+    .docs-nav-item {
+        display: block;
+        padding: 12px 20px;
+        color: #333;
+        text-decoration: none;
+        border-left: 3px solid transparent;
+        transition: all 0.2s;
+        font-size: 0.95rem;
+    }
+    
+    .docs-nav-item:hover {
+        background: #e9ecef;
+        color: #667eea;
+        border-left-color: #667eea;
+    }
+    
+    .docs-nav-item.active {
+        background: white;
+        color: #667eea;
+        border-left-color: #667eea;
+        font-weight: 600;
+    }
+    
+    /* 右侧内容区 */
+    .docs-content {
+        flex: 1;
+        padding: 30px 40px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        max-width: 100%;
+        max-height: calc(100vh - 100px);  /* 固定最大高度 */
+    }
+    
+    /* 右侧滚动条样式 */
+    .docs-content::-webkit-scrollbar {
+        width: 10px;
+    }
+    
+    .docs-content::-webkit-scrollbar-track {
+        background: #f9f9f9;
+    }
+    
+    .docs-content::-webkit-scrollbar-thumb {
+        background: #667eea;
+        border-radius: 5px;
+    }
+    
+    .docs-content::-webkit-scrollbar-thumb:hover {
+        background: #5568d3;
+    }
+    
+    .docs-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e1e4e8;
+    }
+    
+    .docs-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0;
+    }
+    
+    .docs-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    /* Markdown 内容样式 */
+    .markdown-body {
+        font-size: 16px;
+        line-height: 1.8;
+        color: #24292e;
+    }
+    
+    .markdown-body h1 {
+        font-size: 2em;
+        font-weight: 600;
+        padding-bottom: 0.3em;
+        border-bottom: 2px solid #eaecef;
+        margin-top: 24px;
+        margin-bottom: 16px;
+    }
+    
+    .markdown-body h2 {
+        font-size: 1.5em;
+        font-weight: 600;
+        padding-bottom: 0.3em;
+        border-bottom: 1px solid #eaecef;
+        margin-top: 24px;
+        margin-bottom: 16px;
+    }
+    
+    .markdown-body h3 {
+        font-size: 1.25em;
+        font-weight: 600;
+        margin-top: 24px;
+        margin-bottom: 16px;
+    }
+    
+    .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+        font-size: 1em;
+        font-weight: 600;
+        margin-top: 24px;
+        margin-bottom: 16px;
+    }
+    
+    .markdown-body p {
+        margin-top: 0;
+        margin-bottom: 16px;
+    }
+    
+    .markdown-body code {
+        background: #f6f8fa;
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 85%;
+        color: #e01e5a;
+    }
+    
+    .markdown-body pre {
+        background: #f6f8fa;
+        padding: 16px;
+        overflow: auto;
+        font-size: 85%;
+        line-height: 1.45;
+        border-radius: 6px;
+        margin-bottom: 16px;
+    }
+    
+    .markdown-body pre code {
+        background: transparent;
+        padding: 0;
+        font-size: 100%;
+        color: inherit;
+        border-radius: 0;
+    }
+    
+    .markdown-body ul, .markdown-body ol {
+        padding-left: 2em;
+        margin-top: 0;
+        margin-bottom: 16px;
+    }
+    
+    .markdown-body li {
+        margin-top: 0.25em;
+    }
+    
+    .markdown-body blockquote {
+        padding: 0 1em;
+        color: #6a737d;
+        border-left: 0.25em solid #dfe2e5;
+        margin: 0 0 16px 0;
+    }
+    
+    .markdown-body table {
+        border-spacing: 0;
+        border-collapse: collapse;
+        display: block;
+        width: 100%;
+        overflow: auto;
+        margin-bottom: 16px;
+    }
+    
+    .markdown-body table th {
+        font-weight: 600;
+        padding: 6px 13px;
+        border: 1px solid #dfe2e5;
+        background: #f6f8fa;
+    }
+    
+    .markdown-body table td {
+        padding: 6px 13px;
+        border: 1px solid #dfe2e5;
+    }
+    
+    .markdown-body table tr {
+        background-color: #fff;
+        border-top: 1px solid #c6cbd1;
+    }
+    
+    .markdown-body table tr:nth-child(2n) {
+        background-color: #f6f8fa;
+    }
+    
+    .markdown-body hr {
+        height: 0.25em;
+        padding: 0;
+        margin: 24px 0;
+        background-color: #e1e4e8;
+        border: 0;
+    }
+    
+    .markdown-body a {
+        color: #0366d6;
+        text-decoration: none;
+    }
+    
+    .markdown-body a:hover {
+        text-decoration: underline;
+    }
+    
+    .markdown-body img {
+        max-width: 100%;
+        box-sizing: content-box;
+        border-radius: 6px;
+    }
+    
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+        .docs-container {
+            flex-direction: column;
+        }
+        
+        .docs-sidebar {
+            width: 100%;
+            max-height: 300px;
+        }
+        
+        .docs-content {
+            padding: 20px;
+        }
+        
+        .docs-title {
+            font-size: 1.5rem;
+        }
+    }
+    
+    /* 加载动画 */
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #6a737d;
+    }
+    
+    .loading i {
+        font-size: 2em;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+<div class="docs-container">
+    <!-- 左侧边栏 -->
+    <div class="docs-sidebar">
+        <div class="docs-sidebar-header">
+            <h2><i class="fas fa-book"></i> 文档目录</h2>
+            <p>共 {{ docs|length }} 篇文档</p>
+        </div>
+        
+        <nav class="docs-nav">
+            {% if docs %}
+                {% for doc in docs %}
+                <a href="{{ url_for('study_docs', doc=doc.filename) }}" 
+                   class="docs-nav-item {% if selected_doc == doc.filename %}active{% endif %}">
+                    <i class="fas fa-file-alt" style="margin-right: 8px; opacity: 0.6;"></i>
+                    {{ doc.display_name }}
+                </a>
+                {% endfor %}
+            {% else %}
+                <div style="padding: 20px; text-align: center; color: #6a737d;">
+                    <p>暂无文档</p>
+                    <small>请将 Markdown 文件放入<br><code>static/docs</code> 目录</small>
+                </div>
+            {% endif %}
+        </nav>
+    </div>
+    
+    <!-- 右侧内容区 -->
+    <div class="docs-content">
+        {% if doc_content %}
+            <div class="docs-header">
+                <h1 class="docs-title">{{ selected_display_name or '文档' }}</h1>
+                <div class="docs-actions">
+                    <a href="{{ url_for('static', filename='docs/' ~ selected_doc) }}" 
+                       class="btn btn-outline-secondary btn-sm" 
+                       download
+                       title="下载文档">
                         <i class="fas fa-download"></i> 下载
+                    </a>
+                    <a href="{{ url_for('study') }}" 
+                       class="btn btn-outline-primary btn-sm"
+                       title="返回学习主页">
+                        <i class="fas fa-arrow-left"></i> 返回
                     </a>
                 </div>
             </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <p class="text-muted mb-0">暂无文档，请将 Markdown 文件放入 <code>static/docs</code> 目录。</p>
-    {% endif %}
+            
+            <!-- Markdown 渲染内容 -->
+            <div id="markdownContent" class="markdown-body">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>正在加载文档...</p>
+                </div>
+            </div>
+            
+            <script>
+                // 配置 marked.js
+                marked.setOptions({
+                    highlight: function(code, lang) {
+                        if (lang && hljs.getLanguage(lang)) {
+                            try {
+                                return hljs.highlight(code, { language: lang }).value;
+                            } catch (err) {}
+                        }
+                        return hljs.highlightAuto(code).value;
+                    },
+                    breaks: true,
+                    gfm: true
+                });
+                
+                // 渲染 Markdown
+                document.addEventListener('DOMContentLoaded', function() {
+                    const content = {{ doc_content|tojson }};
+                    const container = document.getElementById('markdownContent');
+                    
+                    try {
+                        // 使用 marked.js 渲染
+                        container.innerHTML = marked.parse(content);
+                        
+                        // 高亮所有代码块
+                        container.querySelectorAll('pre code').forEach((block) => {
+                            hljs.highlightElement(block);
+                        });
+                        
+                        // 平滑滚动到顶部
+                        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } catch (err) {
+                        console.error('Markdown 渲染错误:', err);
+                        container.innerHTML = '<div class="alert alert-danger">文档渲染失败，请刷新页面重试。</div>';
+                    }
+                });
+            </script>
+        {% else %}
+            <div style="text-align: center; padding: 60px 20px;">
+                <i class="fas fa-book-open" style="font-size: 4em; color: #ddd; margin-bottom: 20px;"></i>
+                <h2 style="color: #6a737d;">欢迎使用文档学习</h2>
+                <p style="color: #959da5;">请从左侧目录选择要阅读的文档</p>
+                <a href="{{ url_for('study') }}" class="btn btn-primary mt-3">
+                    <i class="fas fa-arrow-left"></i> 返回学习主页
+                </a>
+            </div>
+        {% endif %}
+    </div>
 </div>
 
-{% if selected_doc %}
-<div class="card">
-    <h2 class="card-title mb-3">{{ selected_doc }}</h2>
-    {% if doc_content %}
-        <div class="doc-viewer">
-            <pre>{{ doc_content }}</pre>
-        </div>
-    {% else %}
-        <p class="text-muted">无法读取该文档或内容为空。</p>
-    {% endif %}
-</div>
-{% endif %}
-
-<style>
-    .doc-viewer pre {
-        white-space: pre-wrap;
-        word-break: break-word;
-        background: var(--gray-100);
-        padding: 1rem;
-        border-radius: var(--border-radius);
-        border: 1px solid var(--gray-200);
-    }
-</style>
 {% endblock %}
-
